@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import Order from '../models/Order.js';
 import Pizza from '../models/Pizza.js';
 import Ingredient from '../models/Ingredient.js';
@@ -105,9 +106,17 @@ export const createOrder = async (req, res, next) => {
         }
       } else {
         // Standard Preset Pizza
-        const pizza = await Pizza.findById(item.pizza).populate('ingredients');
+        const pizzaId = item.pizza || item._id;
+        let pizza = null;
+        if (pizzaId && mongoose.Types.ObjectId.isValid(pizzaId)) {
+          pizza = await Pizza.findById(pizzaId).populate('ingredients');
+        }
+        if (!pizza && item.name) {
+          pizza = await Pizza.findOne({ name: item.name }).populate('ingredients');
+        }
+
         if (!pizza) {
-          return res.status(404).json({ success: false, message: 'Pizza not found' });
+          return res.status(404).json({ success: false, message: `Preset pizza '${item.name || 'item'}' not found` });
         }
 
         // Check ingredients

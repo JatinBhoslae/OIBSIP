@@ -12,7 +12,7 @@ const CHECKOUT_STEPS = ['Address', 'Review', 'Pay'];
 
 export default function Checkout() {
   const { cartItems, couponCode, getCartTotals, clearCart } = useContext(CartContext);
-  const { user } = useContext(AuthContext);
+  const { user, token, loading: authLoading } = useContext(AuthContext);
 
   const [currentStep, setCurrentStep] = useState(0);
   const [street, setStreet] = useState('');
@@ -26,6 +26,11 @@ export default function Checkout() {
   const totals = getCartTotals();
 
   const handlePlaceOrder = async () => {
+    if (!token || !user) {
+      setErrorMessage('Please log in to place an order.');
+      return;
+    }
+
     if (!street || !city || !zipCode || !phone) {
       setErrorMessage('Please fill in all shipping details');
       setCurrentStep(0);
@@ -61,9 +66,10 @@ export default function Checkout() {
             const verifyRes = await api.post(
               '/orders/verify-payment',
               {
-                orderId: order._id,
+                razorpayOrderId: response.razorpay_order_id,
                 razorpayPaymentId: response.razorpay_payment_id,
                 razorpaySignature: response.razorpay_signature,
+                orderId: order._id,
               }
             );
 
@@ -78,8 +84,8 @@ export default function Checkout() {
           }
         },
         prefill: {
-          name: user.name,
-          email: user.email,
+          name: user?.name || '',
+          email: user?.email || '',
           contact: phone,
         },
         theme: { color: '#FF6B00' },
@@ -93,6 +99,32 @@ export default function Checkout() {
       setLoading(false);
     }
   };
+
+  if (!authLoading && (!token || !user)) {
+    return (
+      <div className="bg-[#111827] text-white min-h-screen py-16 px-6 flex items-center justify-center">
+        <div className="bg-neutral-900/60 border border-neutral-850 p-8 rounded-card max-w-md w-full text-center space-y-5 shadow-large">
+          <div className="w-12 h-12 rounded-2xl bg-[#FF6B00]/10 border border-[#FF6B00]/20 text-[#FF6B00] mx-auto flex items-center justify-center">
+            <ShieldCheck className="w-6 h-6" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-xl font-extrabold text-white">Login Required for Checkout</h2>
+            <p className="text-xs text-neutral-400">
+              Please sign in to your PizzaHub customer account to complete your order and track live delivery.
+            </p>
+          </div>
+          <div className="flex gap-3 pt-2">
+            <Button
+              onClick={() => navigate('/login')}
+              className="w-full py-3 text-xs"
+            >
+              Sign In to Continue
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-[#111827] text-white min-h-screen py-12 px-6">

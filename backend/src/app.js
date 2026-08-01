@@ -19,6 +19,8 @@ import pizzaRoutes from './routes/pizzaRoutes.js';
 import ingredientRoutes from './routes/ingredientRoutes.js';
 import couponRoutes from './routes/couponRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
+import inventoryRoutes from './routes/inventoryRoutes.js';
 
 // Connect Database
 connectDB();
@@ -51,6 +53,8 @@ app.use('/api/pizzas', pizzaRoutes);
 app.use('/api/ingredients', ingredientRoutes);
 app.use('/api/coupons', couponRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/admin/inventory', inventoryRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Fallback Route
 app.use('*', (req, res) => {

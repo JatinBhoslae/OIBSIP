@@ -7,6 +7,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Button from '../components/common/Button';
 
 export default function Menu() {
+  const { addToCart } = useContext(CartContext);
+  const { user } = useContext(AuthContext);
   const [pizzas, setPizzas] = useState([]);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('all');
@@ -17,9 +19,9 @@ export default function Menu() {
   const [selectedPizza, setSelectedPizza] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
-  const [rating, setRating] = useState(5);
-  const [comment, setComment] = useState('');
-  const [reviewError, setReviewError] = useState('');
+  const [newRating, setNewRating] = useState(5);
+  const [newComment, setNewComment] = useState('');
+  const [reviewMessage, setReviewMessage] = useState('');
 
   useEffect(() => {
     fetchPizzas();
@@ -42,7 +44,7 @@ export default function Menu() {
   const openReviews = async (pizza) => {
     setSelectedPizza(pizza);
     setReviewsLoading(true);
-    setReviewError('');
+    setReviewMessage('');
     try {
       const res = await api.get(`/pizzas/${pizza._id}/reviews`);
       setReviews(res.data.reviews);
@@ -53,20 +55,20 @@ export default function Menu() {
     }
   };
 
-  const handleSubmitReview = async (e) => {
+  const handleAddReview = async (e) => {
     e.preventDefault();
-    setReviewError('');
+    setReviewMessage('');
     try {
       await api.post(
         `/pizzas/${selectedPizza._id}/reviews`,
-        { rating, comment }
+        { rating: newRating, comment: newComment }
       );
-      setComment('');
+      setNewComment('');
       // Reload reviews
       const res = await api.get(`/pizzas/${selectedPizza._id}/reviews`);
       setReviews(res.data.reviews);
     } catch (error) {
-      setReviewError(error.response?.data?.message || 'Failed to submit review');
+      setReviewMessage(error.response?.data?.message || 'Failed to submit review');
     }
   };
 
@@ -100,7 +102,7 @@ export default function Menu() {
               placeholder="Search pizzas..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-neutral-950 border border-neutral-800 rounded-input pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-[#FF6B00] text-white"
+              className="w-full bg-neutral-950 border border-neutral-800 rounded-input pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#FF6B00]"
             />
           </div>
 
@@ -109,7 +111,7 @@ export default function Menu() {
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="w-full bg-neutral-950 border border-neutral-800 rounded-input px-4 py-2.5 text-sm focus:outline-none focus:border-[#FF6B00] text-white"
+              className="w-full bg-neutral-950 border border-neutral-800 rounded-input px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#FF6B00]"
             >
               <option value="all">All Categories</option>
               <option value="veg">Vegetarian</option>
@@ -122,7 +124,7 @@ export default function Menu() {
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value)}
-              className="w-full bg-neutral-950 border border-neutral-800 rounded-input px-4 py-2.5 text-sm focus:outline-none focus:border-[#FF6B00] text-white"
+              className="w-full bg-neutral-950 border border-neutral-800 rounded-input px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#FF6B00]"
             >
               <option value="newest">Sort: Newest</option>
               <option value="price-low">Price: Low to High</option>
@@ -162,13 +164,13 @@ export default function Menu() {
                   src={pizza.image}
                   alt={pizza.name}
                   className="w-full h-48 object-cover cursor-pointer hover:opacity-90 transition-opacity"
-                  onClick={() => openPizzaDetails(pizza)}
+                  onClick={() => openReviews(pizza)}
                 />
                 <div className="p-6 flex flex-col flex-1 space-y-4">
                   <div className="flex justify-between items-start">
                     <h3
                       className="text-base font-bold text-white hover:text-[#FF6B00] cursor-pointer transition-colors"
-                      onClick={() => openPizzaDetails(pizza)}
+                      onClick={() => openReviews(pizza)}
                     >
                       {pizza.name}
                     </h3>
