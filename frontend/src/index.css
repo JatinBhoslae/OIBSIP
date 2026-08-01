@@ -1,0 +1,71 @@
+@import "tailwindcss";
+
+:root {
+  font-family: 'Poppins', sans-serif;
+  --primary-orange: #FF6B00;
+  --primary-red: #E63946;
+  --dark-bg: #111827;
+}
+
+body {
+  background-color: var(--dark-bg);
+  color: #FFFFFF;
+  margin: 0;
+}
+
+/* Custom shadows */
+.shadow-light {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.shadow-medium {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.shadow-large {
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+/* Border radius tokens */
+.rounded-card {
+  border-radius: 20px;
+}
+
+.rounded-btn {
+  border-radius: 12px;
+}
+
+.rounded-input {
+  border-radius: 10px;
+}
+
+.rounded-modal {
+  border-radius: 18px;
+}
+
+/* Glassmorphism style */
+.glass {
+  background: rgba(17, 24, 39, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #111827;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #FF6B00;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #e05e00;
+}
