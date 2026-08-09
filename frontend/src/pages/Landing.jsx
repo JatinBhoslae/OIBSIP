@@ -1,9 +1,83 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { Link } from 'react-router-dom';
-import { Pizza, Flame, Clock, Award, ShieldCheck } from 'lucide-react';
+import { Pizza, Flame, Clock, ShieldCheck, PlusCircle, ListOrdered, LayoutDashboard, BarChart3, Package, Truck } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { AuthContext } from '../context/AuthContext';
 
 export default function Landing() {
+  const { user } = useContext(AuthContext);
+  const isAdmin = user?.role === 'admin';
+
+  // ── Admin Landing ──
+  if (isAdmin) {
+    const quickActions = [
+      { to: '/admin/pizzas', label: 'Manage Menu', desc: 'Add, edit or remove pizzas from the catalog', icon: PlusCircle, color: 'from-orange-500 to-amber-500' },
+      { to: '/admin/orders', label: 'All Orders', desc: 'View and manage every incoming order', icon: ListOrdered, color: 'from-blue-500 to-cyan-500' },
+      { to: '/admin/dashboard', label: 'Dashboard', desc: 'Revenue, users, and system health overview', icon: LayoutDashboard, color: 'from-emerald-500 to-teal-500' },
+      { to: '/admin/analytics', label: 'Analytics', desc: 'Charts, trends, and business intelligence', icon: BarChart3, color: 'from-purple-500 to-violet-500' },
+      { to: '/admin/inventory', label: 'Inventory', desc: 'Track ingredient stock and reorder alerts', icon: Package, color: 'from-yellow-500 to-orange-500' },
+      { to: '/admin/delivery', label: 'Delivery Partners', desc: 'Manage riders, assignments, and zones', icon: Truck, color: 'from-pink-500 to-rose-500' },
+    ];
+
+    return (
+      <div className="bg-[#111827] text-white min-h-screen flex flex-col">
+        {/* Admin Hero */}
+        <section className="relative overflow-hidden pt-20 pb-16 px-6 max-w-6xl mx-auto w-full text-center">
+          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-[#FF6B00]/8 rounded-full blur-[140px] pointer-events-none" />
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="relative z-10 space-y-5"
+          >
+            <div className="inline-flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/25 px-3 py-1 rounded-full text-emerald-400 text-xs font-semibold uppercase tracking-wider">
+              <ShieldCheck className="w-3.5 h-3.5" />
+              Admin Control Panel
+            </div>
+            <h1 className="text-4xl md:text-5xl font-extrabold leading-tight tracking-tight">
+              Welcome back, <br />
+              <span className="bg-gradient-to-r from-[#FF6B00] via-yellow-500 to-red-500 bg-clip-text text-transparent">
+                {user.name || 'Admin'}
+              </span>
+            </h1>
+            <p className="text-neutral-400 text-sm max-w-md mx-auto leading-relaxed">
+              Your command center for managing the entire PizzaHub operation — menu, orders, inventory, delivery, and analytics.
+            </p>
+          </motion.div>
+        </section>
+
+        {/* Quick Actions Grid */}
+        <section className="px-6 pb-24 max-w-6xl mx-auto w-full">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {quickActions.map((action, idx) => {
+              const Icon = action.icon;
+              return (
+                <motion.div
+                  key={idx}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: idx * 0.08 }}
+                >
+                  <Link
+                    to={action.to}
+                    className="group block bg-neutral-900/60 border border-neutral-800 hover:border-neutral-700 rounded-2xl p-6 space-y-3 transition-all hover:shadow-lg hover:shadow-black/20"
+                  >
+                    <div className={`bg-gradient-to-br ${action.color} p-3 rounded-xl w-fit text-white shadow-lg group-hover:scale-110 transition-transform`}>
+                      <Icon className="w-5 h-5" />
+                    </div>
+                    <h3 className="text-base font-bold text-white group-hover:text-[#FF6B00] transition-colors">{action.label}</h3>
+                    <p className="text-neutral-500 text-xs leading-relaxed">{action.desc}</p>
+                  </Link>
+                </motion.div>
+              );
+            })}
+          </div>
+        </section>
+      </div>
+    );
+  }
+
+  // ── Customer Landing (unchanged) ──
   return (
     <div className="bg-[#111827] text-white min-h-screen flex flex-col">
       {/* Hero Section */}
