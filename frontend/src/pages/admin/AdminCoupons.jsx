@@ -25,7 +25,7 @@ export default function AdminCoupons() {
       const res = await api.get('/coupons');
       // If endpoint doesn't return full list, backend mock coupon handler supplies data
       if (res.data.success) {
-        setCoupons(res.data.data);
+        setCoupons(res.data.coupons || []);
       }
     } catch (err) {
       console.error('Error fetching coupons:', err);

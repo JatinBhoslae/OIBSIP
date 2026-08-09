@@ -17,7 +17,7 @@ export default function AdminPizzas() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [basePrice, setBasePrice] = useState('');
-  const [category, setCategory] = useState('Veg');
+  const [category, setCategory] = useState('veg');
   const [image, setImage] = useState('');
   const [sizePrices, setSizePrices] = useState({ Small: '', Medium: '', Large: '' });
 
@@ -25,7 +25,7 @@ export default function AdminPizzas() {
     try {
       const res = await api.get('/pizzas');
       if (res.data.success) {
-        setPizzas(res.data.data);
+        setPizzas(res.data.pizzas || []);
       }
     } catch (err) {
       console.error('Error fetching pizzas:', err);
@@ -43,7 +43,7 @@ export default function AdminPizzas() {
     setName('');
     setDescription('');
     setBasePrice('');
-    setCategory('Veg');
+    setCategory('veg');
     setImage('');
     setSizePrices({ Small: '', Medium: '', Large: '' });
     setModalOpen(true);
@@ -53,8 +53,8 @@ export default function AdminPizzas() {
     setEditingPizza(pizza);
     setName(pizza.name);
     setDescription(pizza.description);
-    setBasePrice(pizza.price || '');
-    setCategory(pizza.category || 'Veg');
+    setBasePrice(pizza.basePrice || '');
+    setCategory(pizza.category || 'veg');
     setImage(pizza.image || '');
     setSizePrices({
       Small: pizza.prices?.Small || '',
@@ -69,7 +69,7 @@ export default function AdminPizzas() {
     const payload = {
       name,
       description,
-      price: Number(basePrice),
+      basePrice: Number(basePrice),
       category,
       image,
       prices: {
@@ -81,10 +81,8 @@ export default function AdminPizzas() {
 
     try {
       if (editingPizza) {
-        // Edit API endpoint (assumes PUT /pizzas/:id)
         await api.put(`/pizzas/${editingPizza._id}`, payload);
       } else {
-        // Add API endpoint (assumes POST /pizzas)
         await api.post('/pizzas', payload);
       }
       fetchPizzas();
@@ -142,8 +140,8 @@ export default function AdminPizzas() {
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-3xl">🍕</div>
                     )}
-                    <span className={`absolute top-3 left-3 text-[9px] font-black px-2.5 py-1 rounded-full uppercase ${pizza.category === 'Non-Veg' ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
-                      {pizza.category || 'Veg'}
+                    <span className={`absolute top-3 left-3 text-[9px] font-black px-2.5 py-1 rounded-full uppercase ${pizza.category === 'non-veg' ? 'bg-red-500/20 text-red-400' : pizza.category === 'specialty' ? 'bg-purple-500/20 text-purple-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
+                      {pizza.category || 'veg'}
                     </span>
                   </div>
                   <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
@@ -155,7 +153,7 @@ export default function AdminPizzas() {
                     <div className="flex justify-between items-center pt-2 border-t border-neutral-850">
                       <div>
                         <span className="text-[10px] text-neutral-500 uppercase">Base Price</span>
-                        <p className="text-sm font-black text-[#FF6B00]">₹{pizza.price}</p>
+                        <p className="text-sm font-black text-[#FF6B00]">₹{pizza.basePrice}</p>
                       </div>
                       <div className="flex gap-2">
                         <button onClick={() => openEditModal(pizza)} className="p-2 rounded-xl bg-neutral-800 text-neutral-400 hover:text-white transition-colors">
@@ -193,8 +191,9 @@ export default function AdminPizzas() {
               <div className="flex flex-col gap-1 text-xs">
                 <label className="font-bold text-neutral-400">Category</label>
                 <select value={category} onChange={(e) => setCategory(e.target.value)} className="bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-2.5 text-white">
-                  <option value="Veg">Vegetarian</option>
-                  <option value="Non-Veg">Non-Vegetarian</option>
+                  <option value="veg">Vegetarian</option>
+                  <option value="non-veg">Non-Vegetarian</option>
+                  <option value="specialty">Specialty</option>
                 </select>
               </div>
 
