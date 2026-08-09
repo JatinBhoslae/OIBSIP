@@ -10,12 +10,25 @@ const generateToken = (id) => {
 };
 
 export const register = async (req, res, next) => {
-  const { name, email, password } = req.body;
+  const { name, email, password, ref } = req.body;
 
   try {
     const userExists = await User.findOne({ email });
     if (userExists) {
       return res.status(400).json({ success: false, message: 'User already exists' });
+    }
+
+    // Generate unique referral code
+    const cleanName = name.replace(/[^a-zA-Z]/g, '').toUpperCase().slice(0, 5) || 'PIZZA';
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    const referralCode = `PIZZA-${cleanName}${randomSuffix}`;
+
+    let referrer = null;
+    if (ref) {
+      const refUser = await User.findOne({ referralCode: ref });
+      if (refUser) {
+        referrer = refUser._id;
+      }
     }
 
     // Generate random 6-digit OTP
@@ -26,6 +39,8 @@ export const register = async (req, res, next) => {
       name,
       email,
       password,
+      referralCode,
+      referredBy: referrer,
       verificationOTP: otp,
       otpExpires,
     });
@@ -41,7 +56,7 @@ export const register = async (req, res, next) => {
           <div style="font-size: 24px; font-weight: bold; text-align: center; margin: 20px 0; padding: 10px; background-color: #fff2ee; border-radius: 5px; color: #ff5e36; letter-spacing: 2px;">
             ${otp}
           </div>
-          <p>This code will expire in 10 minutes. If you did not request this, please ignore this email.</p>
+          <p>Your unique referral code is <strong>${referralCode}</strong>. Share it with friends to earn 500 loyalty points!</p>
         </div>
       `,
     });
@@ -51,6 +66,7 @@ export const register = async (req, res, next) => {
       message: 'Registration successful! Verification OTP sent to email.',
       userId: user._id,
       email: user.email,
+      referralCode: user.referralCode,
     });
   } catch (error) {
     next(error);
@@ -77,6 +93,7 @@ export const verifyOTP = async (req, res, next) => {
     user.isVerified = true;
     user.verificationOTP = undefined;
     user.otpExpires = undefined;
+    user.lastLogin = new Date();
     await user.save();
 
     return res.status(200).json({
@@ -89,6 +106,11 @@ export const verifyOTP = async (req, res, next) => {
         email: user.email,
         role: user.role,
         isVerified: user.isVerified,
+        phone: user.phone,
+        profileImage: user.profileImage,
+        loyaltyPoints: user.loyaltyPoints,
+        loyaltyTier: user.loyaltyTier,
+        referralCode: user.referralCode,
       },
     });
   } catch (error) {
@@ -111,7 +133,6 @@ export const login = async (req, res, next) => {
     }
 
     if (!user.isVerified) {
-      // Resend OTP
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
       user.verificationOTP = otp;
       user.otpExpires = new Date(Date.now() + 10 * 60 * 1000);
@@ -131,6 +152,9 @@ export const login = async (req, res, next) => {
       });
     }
 
+    user.lastLogin = new Date();
+    await user.save();
+
     return res.status(200).json({
       success: true,
       token: generateToken(user._id),
@@ -140,6 +164,11 @@ export const login = async (req, res, next) => {
         email: user.email,
         role: user.role,
         isVerified: user.isVerified,
+        phone: user.phone,
+        profileImage: user.profileImage,
+        loyaltyPoints: user.loyaltyPoints,
+        loyaltyTier: user.loyaltyTier,
+        referralCode: user.referralCode,
       },
     });
   } catch (error) {

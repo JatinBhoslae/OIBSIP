@@ -26,8 +26,13 @@ export default function Checkout() {
   const totals = getCartTotals();
 
   const handlePlaceOrder = async () => {
-    if (!token || !user) {
+    if (!token) {
       setErrorMessage('Please log in to place an order.');
+      return;
+    }
+
+    if (!navigator.onLine) {
+      setErrorMessage("You're offline. Please reconnect before placing your order.");
       return;
     }
 
@@ -264,13 +269,19 @@ export default function Checkout() {
                   </p>
                 </div>
 
+                {!navigator.onLine && (
+                  <p className="text-xs text-[#E63946] font-semibold text-center bg-[#E63946]/10 p-2.5 rounded-xl border border-[#E63946]/20">
+                    ⚠️ You are currently offline. Reconnect to pay and complete order.
+                  </p>
+                )}
+
                 <div className="flex gap-3">
                   <Button onClick={() => setCurrentStep(1)} variant="secondary" className="py-3 flex-1">
                     Back
                   </Button>
-                  <Button onClick={handlePlaceOrder} disabled={loading} className="py-3 flex-1">
+                  <Button onClick={handlePlaceOrder} disabled={loading || !navigator.onLine} className="py-3 flex-1">
                     <CreditCard className="w-4 h-4" />
-                    {loading ? 'Processing...' : `Pay ₹${totals.grandTotal}`}
+                    {loading ? 'Processing...' : !navigator.onLine ? 'Offline' : `Pay ₹${totals.grandTotal}`}
                   </Button>
                 </div>
               </div>

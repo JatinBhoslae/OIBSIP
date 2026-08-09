@@ -1,0 +1,30 @@
+# ===========================================
+# PizzaHub — Development Docker Compose
+# ===========================================
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+#
+# Adds local MongoDB for development.
+# ===========================================
+
+services:
+  mongodb:
+    image: mongo:7
+    container_name: pizzahub-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - pizzahub-mongo-data:/data/db
+    networks:
+      - pizzahub-net
+
+  backend:
+    environment:
+      - NODE_ENV=development
+      - MONGO_URI=mongodb://mongodb:27017/pizzahub
+    depends_on:
+      - mongodb
+
+volumes:
+  pizzahub-mongo-data:

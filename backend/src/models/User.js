@@ -27,12 +27,44 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['customer', 'admin'],
+      enum: ['customer', 'admin', 'delivery_partner'],
       default: 'customer',
     },
     isVerified: {
       type: Boolean,
       default: false,
+    },
+    phone: {
+      type: String,
+      default: '',
+    },
+    profileImage: {
+      type: String,
+      default: '',
+    },
+    loyaltyPoints: {
+      type: Number,
+      default: 0,
+    },
+    loyaltyTier: {
+      type: String,
+      enum: ['Bronze', 'Silver', 'Gold', 'Platinum'],
+      default: 'Bronze',
+    },
+    referralCode: {
+      type: String,
+      unique: true,
+      sparse: true,
+      index: true,
+    },
+    referredBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    lastLogin: {
+      type: Date,
+      default: Date.now,
     },
     verificationOTP: String,
     otpExpires: Date,

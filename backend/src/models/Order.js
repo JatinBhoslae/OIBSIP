@@ -1,14 +1,42 @@
 import mongoose from 'mongoose';
 
+const statusHistorySchema = new mongoose.Schema({
+  status: {
+    type: String,
+    required: true,
+  },
+  timestamp: {
+    type: Date,
+    default: Date.now,
+  },
+  updatedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+  },
+  role: {
+    type: String,
+    enum: ['customer', 'admin', 'system', 'delivery'],
+    default: 'system',
+  },
+  remarks: {
+    type: String,
+    default: '',
+  },
+  ipAddress: {
+    type: String,
+    default: '',
+  },
+});
+
 const orderItemSchema = new mongoose.Schema({
   pizza: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Pizza',
-    required: false, // Optional if it's a completely custom built pizza
+    required: false,
   },
   name: {
     type: String,
-    required: true, // e.g., 'Custom Pizza' or 'Margherita'
+    required: true,
   },
   isCustom: {
     type: Boolean,
@@ -40,10 +68,26 @@ const orderItemSchema = new mongoose.Schema({
 
 const orderSchema = new mongoose.Schema(
   {
+    orderNumber: {
+      type: String,
+      unique: true,
+      index: true,
+    },
+    trackingCode: {
+      type: String,
+      unique: true,
+      index: true,
+    },
+    invoiceNumber: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: true,
+      index: true,
     },
     items: [orderItemSchema],
     totalAmount: {
@@ -71,13 +115,44 @@ const orderSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['pending', 'confirmed', 'preparing', 'in-kitchen', 'ready', 'out-for-delivery', 'delivered', 'cancelled'],
-      default: 'pending',
+      enum: [
+        'Pending Payment',
+        'Payment Failed',
+        'Order Received',
+        'Preparing',
+        'Baking',
+        'Quality Check',
+        'Ready',
+        'Out For Delivery',
+        'Delivered',
+        'Cancelled',
+        'Refund Pending',
+        'Refunded',
+        // Backward compatibility lowercase aliases
+        'pending',
+        'confirmed',
+        'preparing',
+        'in-kitchen',
+        'ready',
+        'out-for-delivery',
+        'delivered',
+        'cancelled',
+        'refunded',
+      ],
+      default: 'Order Received',
+      index: true,
     },
+    statusHistory: [statusHistorySchema],
     paymentStatus: {
       type: String,
       enum: ['pending', 'paid', 'failed'],
       default: 'pending',
+      index: true,
+    },
+    paymentMethod: {
+      type: String,
+      enum: ['Razorpay', 'COD', 'Card', 'UPI'],
+      default: 'Razorpay',
     },
     paymentId: {
       type: String,
@@ -94,9 +169,106 @@ const orderSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    orderNotes: {
+      type: String,
+      default: '',
+    },
+    adminNotes: {
+      type: String,
+      default: '',
+    },
+    estimatedDeliveryTime: {
+      type: Date,
+    },
+    actualDeliveryTime: {
+      type: Date,
+    },
+    deliveryPartner: {
+      name: { type: String, default: '' },
+      phone: { type: String, default: '' },
+      vehicleNumber: { type: String, default: '' },
+      assignedAt: { type: Date },
+      deliveryNotes: { type: String, default: '' },
+      partnerId: { type: mongoose.Schema.Types.ObjectId, ref: 'DeliveryPartner', index: true },
+    },
+    deliveryInfo: {
+      deliveryStatus: {
+        type: String,
+        enum: [
+          'UNASSIGNED',
+          'ASSIGNED',
+          'ACCEPTED',
+          'REJECTED',
+          'PICKED_UP',
+          'OUT_FOR_DELIVERY',
+          'REACHED_CUSTOMER',
+          'DELIVERED',
+          'FAILED',
+        ],
+        default: 'UNASSIGNED',
+        index: true,
+      },
+      deliveryOTP: {
+        type: String,
+        default: '',
+      },
+      acceptedAt: { type: Date },
+      pickedUpAt: { type: Date },
+      outForDeliveryAt: { type: Date },
+      reachedCustomerAt: { type: Date },
+      deliveredAt: { type: Date },
+      failureReason: { type: String, default: '' },
+      currentLocation: {
+        lat: { type: Number, default: 19.0760 },
+        lng: { type: Number, default: 72.8777 },
+        timestamp: { type: Date, default: Date.now },
+      },
+    },
+    cancelReason: {
+      type: String,
+      default: '',
+    },
+    cancelledBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    refundStatus: {
+      type: String,
+      enum: ['None', 'Pending', 'Processing', 'Completed', 'Rejected'],
+      default: 'None',
+    },
+    refundReason: {
+      type: String,
+      default: '',
+    },
+    refundNotes: {
+      type: String,
+      default: '',
+    },
+    refundedAt: {
+      type: Date,
+    },
   },
   { timestamps: true }
 );
+
+// Virtual for formatted status string
+orderSchema.virtual('normalizedStatus').get(function () {
+  const map = {
+    pending: 'Pending Payment',
+    confirmed: 'Order Received',
+    preparing: 'Preparing',
+    'in-kitchen': 'Baking',
+    ready: 'Ready',
+    'out-for-delivery': 'Out For Delivery',
+    delivered: 'Delivered',
+    cancelled: 'Cancelled',
+    refunded: 'Refunded',
+  };
+  return map[this.status] || this.status;
+});
+
+orderSchema.index({ createdAt: -1 });
 
 const Order = mongoose.model('Order', orderSchema);
 export default Order;

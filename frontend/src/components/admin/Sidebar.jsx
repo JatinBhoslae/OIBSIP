@@ -12,16 +12,23 @@ import {
   Pizza,
   Tag,
   X,
+  Bell,
+  Star,
+  Award,
+  Truck,
 } from 'lucide-react';
 
 const navItems = [
   { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/admin/crm', label: 'Customer CRM', icon: Users },
+  { to: '/admin/reviews', label: 'Reviews', icon: Star },
+  { to: '/admin/delivery', label: 'Delivery & Fleet', icon: Truck },
   { to: '/admin/inventory', label: 'Inventory', icon: Database },
-  { to: '/admin/orders', label: 'Orders', icon: ShoppingBag, disabled: true },
+  { to: '/admin/notifications', label: 'Notifications', icon: Bell },
+  { to: '/admin/orders', label: 'Orders', icon: ShoppingBag },
+  { to: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
   { to: '/admin/pizzas', label: 'Pizzas', icon: Pizza, disabled: true },
-  { to: '/admin/users', label: 'Users', icon: Users, disabled: true },
   { to: '/admin/coupons', label: 'Coupons', icon: Tag, disabled: true },
-  { to: '/admin/analytics', label: 'Analytics', icon: BarChart3, disabled: true },
   { to: '/admin/settings', label: 'Settings', icon: Settings, disabled: true },
 ];
 

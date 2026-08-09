@@ -34,3 +34,11 @@ export const adminOnly = (req, res, next) => {
     return res.status(403).json({ success: false, message: 'Access denied: Administrator role required' });
   }
 };
+
+export const deliveryPartnerOnly = (req, res, next) => {
+  if (req.user && (req.user.role === 'delivery_partner' || req.user.role === 'admin')) {
+    next();
+  } else {
+    return res.status(403).json({ success: false, message: 'Access denied: Delivery Partner role required' });
+  }
+};

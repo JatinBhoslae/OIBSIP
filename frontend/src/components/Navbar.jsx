@@ -33,10 +33,25 @@ export default function Navbar() {
         <Link to="/customize" className="text-[#FF6B00] hover:text-white transition-colors bg-[#FF6B00]/10 border border-[#FF6B00]/25 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider">
           Pizza Builder
         </Link>
+        {user && (
+          <>
+            <Link to="/orders" className="hover:text-[#FF6B00] transition-colors">
+              My Orders
+            </Link>
+            <Link to="/profile/loyalty" className="hover:text-[#FF6B00] text-amber-400 font-semibold transition-colors flex items-center gap-1">
+              🏆 Rewards
+            </Link>
+          </>
+        )}
         {user?.role === 'admin' && (
           <Link to="/admin" className="flex items-center gap-1.5 hover:text-[#FF6B00] transition-colors font-semibold">
             <LayoutDashboard className="w-4 h-4 text-[#FF6B00]" />
             Dashboard
+          </Link>
+        )}
+        {user?.role === 'delivery_partner' && (
+          <Link to="/delivery/dashboard" className="hover:text-[#FF6B00] transition-colors font-semibold flex items-center gap-1 text-emerald-400">
+            🛵 Logistics Portal
           </Link>
         )}
       </div>

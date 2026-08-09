@@ -27,6 +27,55 @@ export const CartProvider = ({ children }) => {
     }
   }, [cartItems]);
 
+  // Sync cart catalog when returning online
+  useEffect(() => {
+    const syncCartCatalog = async () => {
+      if (cartItems.length === 0) return;
+      try {
+        const res = await api.get('/pizzas');
+        if (res.data.success) {
+          const freshPizzas = res.data.data;
+          let warnings = [];
+          let updatedCart = [...cartItems];
+          let cartChanged = false;
+
+          for (let item of cartItems) {
+            if (item.isCustom) continue; // Skip custom pizzas for direct catalog match
+
+            const freshPizza = freshPizzas.find((p) => p._id === item.pizza);
+            if (!freshPizza) {
+              warnings.push(`${item.name} is no longer available.`);
+              updatedCart = updatedCart.filter((i) => i.cartId !== item.cartId);
+              cartChanged = true;
+              continue;
+            }
+
+            // check price changes
+            const freshPrice = freshPizza.prices?.[item.size] || freshPizza.price;
+            if (freshPrice && freshPrice !== item.price) {
+              warnings.push(`${item.name} (${item.size}) price changed from ₹${item.price} to ₹${freshPrice}.`);
+              // Update price
+              updatedCart = updatedCart.map((i) => 
+                i.cartId === item.cartId ? { ...i, price: freshPrice } : i
+              );
+              cartChanged = true;
+            }
+          }
+
+          if (cartChanged) {
+            setCartItems(updatedCart);
+            alert(`Cart Updates:\n\n${warnings.join('\n')}`);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to sync cart catalog:', err);
+      }
+    };
+
+    window.addEventListener('online', syncCartCatalog);
+    return () => window.removeEventListener('online', syncCartCatalog);
+  }, [cartItems]);
+
   const getSubtotal = () => {
     return cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
   };
