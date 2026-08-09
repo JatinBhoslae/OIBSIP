@@ -27,9 +27,11 @@ export default function Navbar() {
       </Link>
 
       <div className="flex items-center gap-6 text-sm font-medium">
-        <Link to="/menu" className="hover:text-[#FF6B00] transition-colors">
-          Menu
-        </Link>
+        {user?.role !== 'admin' && (
+          <Link to="/menu" className="hover:text-[#FF6B00] transition-colors">
+            Menu
+          </Link>
+        )}
         {user?.role !== 'admin' && (
           <Link to="/customize" className="text-[#FF6B00] hover:text-white transition-colors bg-[#FF6B00]/10 border border-[#FF6B00]/25 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider">
             Pizza Builder
@@ -46,9 +48,11 @@ export default function Navbar() {
                 My Orders
               </Link>
             )}
-            <Link to="/profile/loyalty" className="hover:text-[#FF6B00] text-amber-400 font-semibold transition-colors flex items-center gap-1">
-              🏆 Rewards
-            </Link>
+            {user.role !== 'admin' && (
+              <Link to="/profile/loyalty" className="hover:text-[#FF6B00] text-amber-400 font-semibold transition-colors flex items-center gap-1">
+                🏆 Rewards
+              </Link>
+            )}
           </>
         )}
         {user?.role === 'admin' && (
@@ -65,18 +69,20 @@ export default function Navbar() {
       </div>
 
       <div className="flex items-center gap-4">
-        <Link to="/cart" className="relative p-2.5 hover:bg-neutral-800 rounded-full transition-colors">
-          <ShoppingCart className="w-5 h-5 text-neutral-300 hover:text-white" />
-          {totalCartQuantity > 0 && (
-            <motion.span
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              className="absolute -top-0.5 -right-0.5 bg-[#FF6B00] text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full"
-            >
-              {totalCartQuantity}
-            </motion.span>
-          )}
-        </Link>
+        {user?.role !== 'admin' && (
+          <Link to="/cart" className="relative p-2.5 hover:bg-neutral-800 rounded-full transition-colors">
+            <ShoppingCart className="w-5 h-5 text-neutral-300 hover:text-white" />
+            {totalCartQuantity > 0 && (
+              <motion.span
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                className="absolute -top-0.5 -right-0.5 bg-[#FF6B00] text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full"
+              >
+                {totalCartQuantity}
+              </motion.span>
+            )}
+          </Link>
+        )}
 
         {user ? (
           <div className="flex items-center gap-4 text-xs">
