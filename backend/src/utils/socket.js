@@ -1,5 +1,6 @@
 import { Server } from 'socket.io';
 import logger from './logger.js';
+import ChatMessage from '../models/ChatMessage.js';
 
 let io = null;
 
@@ -34,6 +35,33 @@ export const initSocket = (server) => {
     socket.on('joinAdminRoom', () => {
       socket.join('admin-room');
       logger.debug(`Socket ${socket.id} joined admin-room`);
+    });
+
+    // ─── Chat System WebSockets ───
+    socket.on('joinChatRoom', ({ orderId }) => {
+      if (orderId) {
+        socket.join(`chat:${orderId}`);
+        logger.debug(`Socket ${socket.id} joined chat room: chat:${orderId}`);
+      }
+    });
+
+    socket.on('sendChatMessage', async ({ orderId, message, senderId, senderRole }) => {
+      if (!orderId || !message || !senderId || !senderRole) return;
+      try {
+        const chatMsg = await ChatMessage.create({
+          order: orderId,
+          sender: senderId,
+          senderRole,
+          message,
+        });
+
+        const populated = await chatMsg.populate('sender', 'name profileImage');
+
+        // Broadcast to both customer & delivery partner in the room
+        io.to(`chat:${orderId}`).emit('receiveChatMessage', populated);
+      } catch (err) {
+        logger.error('Error saving socket chat message', { error: err.message });
+      }
     });
 
     // --- Delivery Partner System Rooms ---

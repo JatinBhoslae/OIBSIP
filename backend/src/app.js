@@ -35,6 +35,7 @@ import crmRoutes from './routes/crmRoutes.js';
 import deliveryPartnerRoutes from './routes/deliveryPartnerRoutes.js';
 import adminDeliveryRoutes from './routes/adminDeliveryRoutes.js';
 import deliveryRatingRoutes from './routes/deliveryRatingRoutes.js';
+import chatRoutes from './routes/chatRoutes.js';
 
 // Connect Database
 connectDB();
@@ -135,6 +136,7 @@ app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/pizzas', pizzaRoutes);
 app.use('/api/ingredients', ingredientRoutes);
 app.use('/api/coupons', couponRoutes);
+app.use('/api/orders/:id/chat', chatRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/loyalty', loyaltyRoutes);
 app.use('/api/reviews', reviewRoutes);

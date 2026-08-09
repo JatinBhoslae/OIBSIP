@@ -43,6 +43,9 @@ const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const Analytics = lazy(() => import('./pages/admin/Analytics'));
 const AdminCrm = lazy(() => import('./pages/admin/AdminCrm'));
 const AdminReviews = lazy(() => import('./pages/admin/AdminReviews'));
+const AdminPizzas = lazy(() => import('./pages/admin/AdminPizzas'));
+const AdminCoupons = lazy(() => import('./pages/admin/AdminCoupons'));
+const AdminSettings = lazy(() => import('./pages/admin/AdminSettings'));
 
 // Delivery Pages & Guards (Lazy loaded)
 import ProtectedDeliveryRoute from './components/admin/ProtectedDeliveryRoute';
@@ -122,6 +125,9 @@ export default function App() {
                         <Route path="/admin/notifications" element={<Notifications />} />
                         <Route path="/admin/profile" element={<AdminProfile />} />
                         <Route path="/admin/analytics" element={<Analytics />} />
+                        <Route path="/admin/pizzas" element={<AdminPizzas />} />
+                        <Route path="/admin/coupons" element={<AdminCoupons />} />
+                        <Route path="/admin/settings" element={<AdminSettings />} />
                         <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
                         <Route path="/admin/management" element={<AdminDashboard />} />
                       </Route>

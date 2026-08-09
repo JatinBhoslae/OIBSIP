@@ -19,6 +19,7 @@ import {
   Map
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import ChatWidget from '../components/common/ChatWidget';
 
 export default function DeliveryDashboard() {
   const { user, logout } = useContext(AuthContext);
@@ -490,6 +491,10 @@ export default function DeliveryDashboard() {
           </div>
         )}
       </AnimatePresence>
+
+      {activeOrder && (
+        <ChatWidget orderId={activeOrder._id} deliveryPartnerId={partner?._id} />
+      )}
     </div>
   );
 }

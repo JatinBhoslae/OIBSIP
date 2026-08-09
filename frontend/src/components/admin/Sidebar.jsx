@@ -27,9 +27,9 @@ const navItems = [
   { to: '/admin/notifications', label: 'Notifications', icon: Bell },
   { to: '/admin/orders', label: 'Orders', icon: ShoppingBag },
   { to: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
-  { to: '/admin/pizzas', label: 'Pizzas', icon: Pizza, disabled: true },
-  { to: '/admin/coupons', label: 'Coupons', icon: Tag, disabled: true },
-  { to: '/admin/settings', label: 'Settings', icon: Settings, disabled: true },
+  { to: '/admin/pizzas', label: 'Pizzas', icon: Pizza },
+  { to: '/admin/coupons', label: 'Coupons', icon: Tag },
+  { to: '/admin/settings', label: 'Settings', icon: Settings },
 ];
 
 export default function Sidebar({ isOpen, onClose }) {

@@ -3,6 +3,8 @@ import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
 import { SocketContext } from '../context/SocketContext';
+import ChatWidget from '../components/common/ChatWidget';
+import LiveTrackingMap from '../components/common/LiveTrackingMap';
 
 export default function OrderTracking() {
   const { id } = useParams(); // Accepts ObjectId or trackingCode or orderNumber
@@ -236,30 +238,20 @@ export default function OrderTracking() {
         {/* Interactive GPS map tracking */}
         {!isCancelled && order.status !== 'Delivered' && order.deliveryInfo?.deliveryStatus && order.deliveryInfo?.deliveryStatus !== 'UNASSIGNED' && (
           <div className="p-6 rounded-3xl bg-neutral-900 border border-neutral-800 space-y-4">
-            <h3 className="text-base font-bold">Interactive Delivery Map</h3>
-            <div className="h-64 bg-neutral-950 border border-neutral-850 rounded-2xl relative overflow-hidden flex flex-col justify-center items-center p-6 text-center">
-              <div className="absolute inset-0 bg-[radial-gradient(#ff6b0010_1px,transparent_1px)] [background-size:16px_16px] opacity-40" />
-              {order.deliveryInfo?.currentLocation?.lat ? (
-                <div className="z-10 text-xs">
-                  <span className="text-emerald-400 font-bold flex items-center justify-center gap-1.5 mb-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                    Live Driver Position Streamed
-                  </span>
-                  <div className="font-mono text-neutral-400 mt-1">
-                    Latitude: {order.deliveryInfo.currentLocation.lat.toFixed(6)} <br />
-                    Longitude: {order.deliveryInfo.currentLocation.lng.toFixed(6)}
-                  </div>
-                </div>
-              ) : (
-                <div className="z-10 max-w-xs">
-                  🛵
-                  <p className="text-xs font-bold text-neutral-300 mt-2">Waiting for live location stream...</p>
-                  <p className="text-[10px] text-neutral-500 mt-1">
-                    Once the driver departs the restaurant and enables their GPS, updates will begin streaming here.
-                  </p>
-                </div>
+            <div className="flex justify-between items-center">
+              <h3 className="text-base font-bold">Interactive Delivery Map</h3>
+              {order.deliveryInfo?.currentLocation?.lat && (
+                <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-bold animate-pulse flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  Live GPS
+                </span>
               )}
             </div>
+            
+            <LiveTrackingMap
+              customerLocation={{ lat: 19.0760, lng: 72.8777 }} // Default center coordinates matching driver seed starting position
+              driverLocation={order.deliveryInfo?.currentLocation}
+            />
           </div>
         )}
 
@@ -318,6 +310,11 @@ export default function OrderTracking() {
           </div>
         </div>
       </div>
+      
+      {/* Real-time driver chat */}
+      {order && order.deliveryPartner?.partnerId && (
+        <ChatWidget orderId={order._id} deliveryPartnerId={order.deliveryPartner.partnerId} />
+      )}
     </div>
   );
 }
