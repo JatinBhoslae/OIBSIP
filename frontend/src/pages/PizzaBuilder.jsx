@@ -181,20 +181,30 @@ export default function PizzaBuilder() {
             transition={{ type: 'spring', stiffness: 300, damping: 20 }}
             className="relative w-64 h-64 rounded-full border-[10px] border-[#D97706] bg-[#FCD34D] shadow-2xl flex items-center justify-center transition-all duration-300"
           >
-            {/* Sauce layer */}
+            {/* Crust base entrance dough animation */}
+            <motion.div
+              initial={{ rotate: -45, scale: 0.9 }}
+              animate={{ rotate: 0, scale: 1 }}
+              transition={{ type: 'spring', stiffness: 180, damping: 15 }}
+              className="absolute inset-0 rounded-full border-[8px] border-[#B45309] bg-[#FCD34D] shadow-inner pointer-events-none"
+            />
+
+            {/* Sauce layer - radial spiral wipe */}
             {selectedSauce && (
               <motion.div
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 0.94 }}
+                initial={{ opacity: 0, scale: 0.1, rotate: -180 }}
+                animate={{ opacity: 1, scale: 0.94, rotate: 0 }}
+                transition={{ duration: 0.5, ease: 'easeOut' }}
                 className="absolute inset-2 rounded-full bg-gradient-to-br from-red-600 to-red-700 border border-red-800/40 shadow-inner"
               />
             )}
 
-            {/* Cheese layer */}
+            {/* Cheese layer - melting expand fade */}
             {selectedCheese && (
               <motion.div
-                initial={{ opacity: 0, scale: 0.8 }}
+                initial={{ opacity: 0, scale: 0.85 }}
                 animate={{ opacity: 1, scale: 0.88 }}
+                transition={{ duration: 0.6, ease: 'easeInOut' }}
                 className="absolute inset-3 rounded-full bg-gradient-to-tr from-yellow-100 via-amber-100 to-yellow-200 shadow-inner"
               >
                 {/* Speckles on Cheese for realism */}
@@ -202,13 +212,13 @@ export default function PizzaBuilder() {
               </motion.div>
             )}
 
-            {/* Toppings (Veg & Meat) with bounce-in animations */}
-            <div className="absolute inset-5 relative w-full h-full pointer-events-none overflow-visible">
+            {/* Toppings (Veg & Meat) scattered in bunches of 5 */}
+            <div className="absolute inset-4 pointer-events-none overflow-visible w-full h-full relative">
               <AnimatePresence>
                 {[
                   ...selectedVeg.map((v) => ({ name: v, type: 'veg' })),
                   ...selectedMeat.map((m) => ({ name: m, type: 'meat' }))
-                ].map((top, idx) => {
+                ].flatMap((top, topIdx) => {
                   const getEmoji = (name) => {
                     const n = name.toLowerCase();
                     if (n.includes('onion')) return '🧅';
@@ -221,24 +231,33 @@ export default function PizzaBuilder() {
                     return '🧀';
                   };
 
-                  // Generate pseudo-random coordinates around the pizza radius
-                  const angle = (idx * 137.5) * (Math.PI / 180);
-                  const radius = 35 + (idx % 3) * 15;
-                  const x = Math.cos(angle) * radius;
-                  const y = Math.sin(angle) * radius;
+                  // Render a bunch of 5 toppings spread across the pizza canvas
+                  return [0, 1, 2, 3, 4].map((instanceIdx) => {
+                    // Seeded deterministic positions based on topping name and instance index
+                    const seed = (top.name.charCodeAt(0) || 1) + instanceIdx * 73;
+                    const angle = (seed * 137.5) * (Math.PI / 180);
+                    const radius = 20 + (seed % 4) * 15;
+                    const x = Math.cos(angle) * radius;
+                    const y = Math.sin(angle) * radius;
 
-                  return (
-                    <motion.div
-                      key={top.name}
-                      initial={{ opacity: 0, y: -100, scale: 2 }}
-                      animate={{ opacity: 1, x, y, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.5 }}
-                      transition={{ type: 'spring', stiffness: 200, damping: 12 }}
-                      className="absolute left-[45%] top-[45%] text-lg select-none"
-                    >
-                      {getEmoji(top.name)}
-                    </motion.div>
-                  );
+                    return (
+                      <motion.div
+                        key={`${top.name}-${instanceIdx}`}
+                        initial={{ opacity: 0, y: -150, scale: 2 }}
+                        animate={{ opacity: 1, x, y, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.5 }}
+                        transition={{
+                          type: 'spring',
+                          stiffness: 150 + (instanceIdx * 20),
+                          damping: 10 + (instanceIdx * 2),
+                          delay: instanceIdx * 0.05
+                        }}
+                        className="absolute left-[45%] top-[45%] text-lg select-none"
+                      >
+                        {getEmoji(top.name)}
+                      </motion.div>
+                    );
+                  });
                 })}
               </AnimatePresence>
             </div>
