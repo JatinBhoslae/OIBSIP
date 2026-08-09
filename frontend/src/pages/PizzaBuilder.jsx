@@ -153,48 +153,96 @@ export default function PizzaBuilder() {
 
         {/* Step progress tracker */}
         <div className="lg:col-span-12 bg-neutral-900/40 border border-neutral-850 p-4 rounded-card flex justify-between overflow-x-auto gap-4">
-          {STEPS.map((step) => (
-            <button
-              key={step.id}
-              onClick={() => setActiveStep(step.id)}
-              className={`flex-1 min-w-[80px] py-2 text-center rounded-xl text-xs font-bold transition-all border ${activeStep === step.id ? 'bg-[#FF6B00] border-[#FF6B00] text-white' : 'bg-neutral-950 border-neutral-800 text-neutral-400 hover:border-neutral-700'}`}
-            >
-              {step.label}
-            </button>
-          ))}
+          {STEPS.map((step, idx) => {
+            const isCompleted = STEPS.findIndex((s) => s.id === activeStep) > idx;
+            const isActive = activeStep === step.id;
+            return (
+              <button
+                key={step.id}
+                onClick={() => setActiveStep(step.id)}
+                className={`flex-1 min-w-[100px] py-3 text-center rounded-xl text-xs font-bold transition-all border flex items-center justify-center gap-1.5 ${isActive ? 'bg-[#FF6B00] border-[#FF6B00] text-white shadow-lg shadow-orange-500/20' : isCompleted ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-neutral-950 border-neutral-800 text-neutral-500 hover:border-neutral-700'}`}
+              >
+                {isCompleted && <Check className="w-3.5 h-3.5" />}
+                {step.label}
+              </button>
+            );
+          })}
         </div>
 
         {/* Left Side: Pizza Canvas Preview */}
-        <div className="lg:col-span-5 bg-neutral-900/40 border border-neutral-850 rounded-card p-8 flex flex-col items-center justify-center min-h-[400px] relative overflow-hidden shadow-light">
+        <div className="lg:col-span-5 bg-neutral-900/40 border border-neutral-850 rounded-card p-8 flex flex-col items-center justify-center min-h-[420px] relative overflow-hidden shadow-light">
           <div className="absolute w-60 h-60 bg-[#FF6B00]/5 rounded-full blur-[80px] pointer-events-none" />
 
-          {/* Pizza circle representation */}
-          <div className="relative w-64 h-64 rounded-full border-8 border-amber-800 bg-amber-100 shadow-large flex items-center justify-center">
-            <span className="absolute bottom-4 text-[9px] font-bold text-amber-900/50 uppercase tracking-widest">
-              {selectedBase}
-            </span>
-
+          {/* Pizza circle representation with dynamic sizing */}
+          <motion.div
+            animate={{
+              scale: size === 'Small' ? 0.8 : size === 'Large' ? 1.15 : 1,
+            }}
+            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+            className="relative w-64 h-64 rounded-full border-[10px] border-[#D97706] bg-[#FCD34D] shadow-2xl flex items-center justify-center transition-all duration-300"
+          >
             {/* Sauce layer */}
             {selectedSauce && (
-              <div className="absolute w-[92%] h-[92%] rounded-full bg-red-600/90 border border-red-700/40 flex items-center justify-center">
-                {/* Cheese layer */}
-                {selectedCheese && (
-                  <div className="absolute w-[88%] h-[88%] rounded-full bg-yellow-100 shadow-inner flex flex-wrap gap-4 items-center justify-center p-3">
-                    {selectedVeg.slice(0, 6).map((v, i) => (
-                      <span key={i} className="bg-green-600 text-white font-bold text-[8px] px-2 py-0.5 rounded-full uppercase">
-                        {v.substring(0, 3)}
-                      </span>
-                    ))}
-                    {selectedMeat.slice(0, 6).map((m, i) => (
-                      <span key={i} className="bg-red-800 text-white font-bold text-[8px] px-2 py-0.5 rounded-full uppercase">
-                        {m.substring(0, 3)}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 0.94 }}
+                className="absolute inset-2 rounded-full bg-gradient-to-br from-red-600 to-red-700 border border-red-800/40 shadow-inner"
+              />
             )}
-          </div>
+
+            {/* Cheese layer */}
+            {selectedCheese && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 0.88 }}
+                className="absolute inset-3 rounded-full bg-gradient-to-tr from-yellow-100 via-amber-100 to-yellow-200 shadow-inner"
+              >
+                {/* Speckles on Cheese for realism */}
+                <div className="absolute inset-0 opacity-10 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-amber-700 via-transparent to-transparent bg-repeat" />
+              </motion.div>
+            )}
+
+            {/* Toppings (Veg & Meat) with bounce-in animations */}
+            <div className="absolute inset-5 relative w-full h-full pointer-events-none overflow-visible">
+              <AnimatePresence>
+                {[
+                  ...selectedVeg.map((v) => ({ name: v, type: 'veg' })),
+                  ...selectedMeat.map((m) => ({ name: m, type: 'meat' }))
+                ].map((top, idx) => {
+                  const getEmoji = (name) => {
+                    const n = name.toLowerCase();
+                    if (n.includes('onion')) return '🧅';
+                    if (n.includes('tomato')) return '🍅';
+                    if (n.includes('mushroom')) return '🍄';
+                    if (n.includes('olive')) return '🫒';
+                    if (n.includes('jalapeno') || n.includes('chili')) return '🌶️';
+                    if (n.includes('chicken')) return '🍗';
+                    if (n.includes('pepperoni')) return '🥩';
+                    return '🧀';
+                  };
+
+                  // Generate pseudo-random coordinates around the pizza radius
+                  const angle = (idx * 137.5) * (Math.PI / 180);
+                  const radius = 35 + (idx % 3) * 15;
+                  const x = Math.cos(angle) * radius;
+                  const y = Math.sin(angle) * radius;
+
+                  return (
+                    <motion.div
+                      key={top.name}
+                      initial={{ opacity: 0, y: -100, scale: 2 }}
+                      animate={{ opacity: 1, x, y, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.5 }}
+                      transition={{ type: 'spring', stiffness: 200, damping: 12 }}
+                      className="absolute left-[45%] top-[45%] text-lg select-none"
+                    >
+                      {getEmoji(top.name)}
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
+            </div>
+          </motion.div>
 
           <div className="mt-8 text-center space-y-2 relative z-10 w-full">
             <h3 className="text-base font-bold uppercase tracking-wider text-neutral-400">Total Custom Cost</h3>
