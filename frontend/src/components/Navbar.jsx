@@ -30,14 +30,22 @@ export default function Navbar() {
         <Link to="/menu" className="hover:text-[#FF6B00] transition-colors">
           Menu
         </Link>
-        <Link to="/customize" className="text-[#FF6B00] hover:text-white transition-colors bg-[#FF6B00]/10 border border-[#FF6B00]/25 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider">
-          Pizza Builder
-        </Link>
+        {user?.role !== 'admin' && (
+          <Link to="/customize" className="text-[#FF6B00] hover:text-white transition-colors bg-[#FF6B00]/10 border border-[#FF6B00]/25 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider">
+            Pizza Builder
+          </Link>
+        )}
         {user && (
           <>
-            <Link to="/orders" className="hover:text-[#FF6B00] transition-colors">
-              My Orders
-            </Link>
+            {user.role === 'admin' ? (
+              <Link to="/admin/orders" className="hover:text-[#FF6B00] transition-colors font-semibold">
+                All Orders
+              </Link>
+            ) : (
+              <Link to="/orders" className="hover:text-[#FF6B00] transition-colors">
+                My Orders
+              </Link>
+            )}
             <Link to="/profile/loyalty" className="hover:text-[#FF6B00] text-amber-400 font-semibold transition-colors flex items-center gap-1">
               🏆 Rewards
             </Link>
