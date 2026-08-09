@@ -14,28 +14,33 @@ export const generateInvoiceHTML = (order) => {
     minute: '2-digit',
   });
 
-  const cgst = Math.round(order.gst / 2);
-  const sgst = order.gst - cgst;
+  const gstAmount = order.gst || 0;
+  const cgst = Math.round(gstAmount / 2);
+  const sgst = gstAmount - cgst;
 
-  const itemsRows = order.items
+  const itemsRows = (order.items || [])
     .map(
-      (item, idx) => `
+      (item, idx) => {
+        const unitPrice = Number(item.price) || 0;
+        const qty = Number(item.quantity) || 1;
+        return `
     <tr class="item-row">
       <td class="col-center text-muted">${String(idx + 1).padStart(2, '0')}</td>
       <td class="col-desc">
-        <span class="item-name">${item.name}</span>
-        <span class="item-spec">Size: ${item.size}</span>
+        <span class="item-name">${item.name || 'Pizza Item'}</span>
+        <span class="item-spec">Size: ${item.size || 'Medium'}</span>
         ${
           item.isCustom && item.customization
             ? `<span class="item-custom">Base: ${item.customization.base || 'Standard'} | Sauce: ${item.customization.sauce || 'Standard'} | Cheese: ${item.customization.cheese || 'Mozzarella'}</span>`
             : ''
         }
       </td>
-      <td class="col-center">${item.quantity}</td>
-      <td class="col-right">₹${item.price.toFixed(2)}</td>
-      <td class="col-right text-bold">₹${(item.price * item.quantity).toFixed(2)}</td>
+      <td class="col-center">${qty}</td>
+      <td class="col-right">₹${unitPrice.toFixed(2)}</td>
+      <td class="col-right text-bold">₹${(unitPrice * qty).toFixed(2)}</td>
     </tr>
-  `
+  `;
+      }
     )
     .join('');
 
@@ -343,7 +348,7 @@ export const generateInvoiceHTML = (order) => {
     <body>
       <div class="invoice-card">
         
-        {/* Top Header */}
+        <!-- Top Header -->
         <div class="header-section">
           <div class="logo-wrap">
             <h1>🍕 PizzaHub Operations</h1>
@@ -355,7 +360,7 @@ export const generateInvoiceHTML = (order) => {
           </div>
         </div>
 
-        {/* Client Billing Info */}
+        <!-- Client Billing Info -->
         <div class="meta-grid">
           <div class="meta-card">
             <h3>Billed From</h3>
@@ -374,7 +379,7 @@ export const generateInvoiceHTML = (order) => {
           </div>
         </div>
 
-        {/* Item List */}
+        <!-- Item List -->
         <div class="table-wrap">
           <table class="invoice-table">
             <thead>
@@ -392,7 +397,7 @@ export const generateInvoiceHTML = (order) => {
           </table>
         </div>
 
-        {/* Barcode & Totals */}
+        <!-- Barcode & Totals -->
         <div class="totals-section">
           <div class="barcode-box">
             <div class="barcode-mock">
@@ -404,13 +409,13 @@ export const generateInvoiceHTML = (order) => {
           <div class="totals-card">
             <div class="totals-row">
               <span>Subtotal:</span>
-              <span class="text-bold">₹${order.totalAmount.toFixed(2)}</span>
+              <span class="text-bold">₹${(Number(order.totalAmount) || 0).toFixed(2)}</span>
             </div>
             ${
-              order.discountAmount > 0
+              (order.discountAmount || 0) > 0
                 ? `<div class="totals-row bold" style="color: #22C55E;">
                     <span>Discount (${order.couponCode || 'Promo'}):</span>
-                    <span>-₹${order.discountAmount.toFixed(2)}</span>
+                    <span>-₹${(Number(order.discountAmount) || 0).toFixed(2)}</span>
                   </div>`
                 : ''
             }
@@ -424,20 +429,20 @@ export const generateInvoiceHTML = (order) => {
             </div>
             <div class="totals-row">
               <span>Delivery Fee:</span>
-              <span>${order.deliveryCharges === 0 ? 'FREE' : `₹${order.deliveryCharges.toFixed(2)}`}</span>
+              <span>${(order.deliveryCharges || 0) === 0 ? 'FREE' : `₹${(Number(order.deliveryCharges) || 0).toFixed(2)}`}</span>
             </div>
             <div class="totals-row grand">
               <span>Grand Total:</span>
-              <span>₹${order.grandTotal.toFixed(2)}</span>
+              <span>₹${(Number(order.grandTotal) || 0).toFixed(2)}</span>
             </div>
           </div>
         </div>
 
-        {/* Payment Banner details */}
+        <!-- Payment Banner details -->
         <div class="payment-banner">
           <span>Payment Gateway: <strong>${order.paymentMethod || 'Razorpay'}</strong></span>
-          <span>Status: <strong style="color: #22C55E;">${order.paymentStatus.toUpperCase()}</strong></span>
-          <span>Transaction ID: <strong>${order.paymentId || 'MOCK_TRX_9921'}</strong></span>
+          <span>Status: <strong style="color: #22C55E;">${(order.paymentStatus || 'pending').toUpperCase()}</strong></span>
+          <span>Transaction ID: <strong>${order.paymentId || 'N/A'}</strong></span>
         </div>
 
         <div class="footer">

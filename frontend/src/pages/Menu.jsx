@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useContext } from 'react';
 import api from '../utils/api';
-import { Search, SlidersHorizontal, Plus, Star, X } from 'lucide-react';
+import { Search, SlidersHorizontal, Plus, Star, X, Check, ShoppingCart } from 'lucide-react';
 import { CartContext } from '../context/CartContext';
 import { AuthContext } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -14,6 +14,9 @@ export default function Menu() {
   const [category, setCategory] = useState('all');
   const [sort, setSort] = useState('newest');
   const [loading, setLoading] = useState(true);
+
+  // Add-to-cart animation state
+  const [addedPizzaId, setAddedPizzaId] = useState(null);
 
   // Review Modal State
   const [selectedPizza, setSelectedPizza] = useState(null);
@@ -81,6 +84,10 @@ export default function Menu() {
       price: Math.round(size === 'Small' ? pizza.basePrice * 0.85 : size === 'Large' ? pizza.basePrice * 1.3 : pizza.basePrice),
       quantity: 1,
     });
+
+    // Trigger animation
+    setAddedPizzaId(pizza._id);
+    setTimeout(() => setAddedPizzaId(null), 1500);
   };
 
   return (
@@ -158,14 +165,53 @@ export default function Menu() {
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 whileHover={{ y: -4 }}
-                className="bg-neutral-900/40 border border-neutral-850 rounded-card overflow-hidden hover:border-neutral-800 transition-all flex flex-col shadow-light"
+                className="bg-neutral-900/40 border border-neutral-850 rounded-card overflow-hidden hover:border-neutral-800 transition-all flex flex-col shadow-light relative"
               >
-                <img
-                  src={pizza.image}
-                  alt={pizza.name}
-                  className="w-full h-48 object-cover cursor-pointer hover:opacity-90 transition-opacity"
-                  onClick={() => openReviews(pizza)}
-                />
+                {/* Add-to-Cart Success Overlay */}
+                <AnimatePresence>
+                  {addedPizzaId === pizza._id && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="absolute inset-0 z-20 bg-emerald-500/15 backdrop-blur-[2px] flex flex-col items-center justify-center rounded-card pointer-events-none"
+                    >
+                      <motion.div
+                        initial={{ scale: 0, rotate: -180 }}
+                        animate={{ scale: 1, rotate: 0 }}
+                        exit={{ scale: 0 }}
+                        transition={{ type: 'spring', stiffness: 260, damping: 20 }}
+                        className="bg-emerald-500 rounded-full p-3 shadow-lg shadow-emerald-500/30 mb-3"
+                      >
+                        <Check className="w-6 h-6 text-white" strokeWidth={3} />
+                      </motion.div>
+                      <motion.p
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.15 }}
+                        className="text-emerald-400 font-bold text-sm flex items-center gap-1.5"
+                      >
+                        <ShoppingCart className="w-4 h-4" /> Added to Cart!
+                      </motion.p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {pizza.image ? (
+                  <img
+                    src={pizza.image}
+                    alt={pizza.name}
+                    className="w-full h-48 object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                    onClick={() => openReviews(pizza)}
+                  />
+                ) : (
+                  <div
+                    className="w-full h-48 bg-neutral-950 flex items-center justify-center text-5xl cursor-pointer"
+                    onClick={() => openReviews(pizza)}
+                  >
+                    🍕
+                  </div>
+                )}
                 <div className="p-6 flex flex-col flex-1 space-y-4">
                   <div className="flex justify-between items-start">
                     <h3
@@ -174,7 +220,7 @@ export default function Menu() {
                     >
                       {pizza.name}
                     </h3>
-                    <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded ${pizza.category === 'veg' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
+                    <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded ${pizza.category === 'veg' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : pizza.category === 'non-veg' ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-purple-500/10 text-purple-400 border border-purple-500/20'}`}>
                       {pizza.category}
                     </span>
                   </div>
@@ -189,12 +235,13 @@ export default function Menu() {
                       <span className="text-lg font-extrabold text-[#FF6B00]">₹{pizza.basePrice}</span>
                     </div>
 
-                    <button
+                    <motion.button
+                      whileTap={{ scale: 0.9 }}
                       onClick={() => handleAddPresetToCart(pizza, 'Medium')}
                       className="bg-[#FF6B00] hover:bg-[#e05e00] px-4 py-2 rounded-btn text-xs font-bold text-white flex items-center gap-1 transition-all hover:scale-105"
                     >
                       <Plus className="w-3.5 h-3.5" /> Add
-                    </button>
+                    </motion.button>
                   </div>
                 </div>
               </motion.div>
@@ -214,7 +261,11 @@ export default function Menu() {
               className="bg-neutral-900 border border-neutral-800 rounded-modal w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col text-left shadow-large"
             >
               <div className="relative">
-                <img src={selectedPizza.image} alt={selectedPizza.name} className="w-full h-64 object-cover" />
+                {selectedPizza.image ? (
+                  <img src={selectedPizza.image} alt={selectedPizza.name} className="w-full h-64 object-cover" />
+                ) : (
+                  <div className="w-full h-64 bg-neutral-950 flex items-center justify-center text-6xl">🍕</div>
+                )}
                 <button
                   onClick={() => setSelectedPizza(null)}
                   className="absolute top-4 right-4 bg-black/60 hover:bg-black/80 text-white rounded-full p-2 transition-colors font-bold text-sm w-8 h-8 flex items-center justify-center"

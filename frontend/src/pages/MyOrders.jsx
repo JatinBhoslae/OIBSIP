@@ -3,15 +3,24 @@ import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
 import { CartContext } from '../context/CartContext';
+import { Star, X, Check, Award } from 'lucide-react';
 
 export default function MyOrders() {
-  const { token } = useContext(AuthContext);
+  const { token, user } = useContext(AuthContext);
   const { addToCart } = useContext(CartContext);
   const navigate = useNavigate();
 
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('upcoming'); // 'upcoming', 'completed', 'cancelled'
+
+  // Review modal state
+  const [reviewOrder, setReviewOrder] = useState(null);
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState('');
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [reviewMessage, setReviewMessage] = useState('');
 
   useEffect(() => {
     const fetchMyOrders = async () => {
@@ -52,6 +61,31 @@ export default function MyOrders() {
       }
     } catch (err) {
       console.error('Reorder error:', err);
+    }
+  };
+
+  const handlePostReview = async (e) => {
+    e.preventDefault();
+    if (!selectedItem) return;
+    setSubmittingReview(true);
+    setReviewMessage('');
+    try {
+      await axios.post(
+        `http://localhost:5001/api/pizzas/${selectedItem.pizza}/reviews`,
+        { rating, comment },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setReviewMessage('Review posted successfully!');
+      setComment('');
+      setTimeout(() => {
+        setReviewOrder(null);
+        setSelectedItem(null);
+        setReviewMessage('');
+      }, 1000);
+    } catch (err) {
+      setReviewMessage(err.response?.data?.message || 'Failed to submit review');
+    } finally {
+      setSubmittingReview(false);
     }
   };
 
@@ -187,6 +221,21 @@ export default function MyOrders() {
                       Track Order Live
                     </Link>
 
+                    {['delivered', 'Delivered'].includes(order.status) && (
+                      <button
+                        onClick={() => {
+                          setReviewOrder(order);
+                          setSelectedItem(order.items[0] || null);
+                          setRating(5);
+                          setComment('');
+                          setReviewMessage('');
+                        }}
+                        className="px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 text-xs font-bold rounded-xl transition-all"
+                      >
+                        Leave Review
+                      </button>
+                    )}
+
                     <button
                       onClick={() => handleReorder(order._id)}
                       className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-bold rounded-xl transition-all"
@@ -200,6 +249,80 @@ export default function MyOrders() {
           </div>
         )}
       </div>
+
+      {/* Review Dialog Overlay */}
+      {reviewOrder && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-neutral-900 border border-neutral-800 rounded-3xl w-full max-w-md p-6 flex flex-col text-left space-y-4">
+            <div className="flex justify-between items-center border-b border-neutral-850 pb-3">
+              <div>
+                <h3 className="font-bold text-sm">Write Review</h3>
+                <p className="text-[10px] text-neutral-400">Order #{reviewOrder.orderNumber || reviewOrder._id.slice(-6).toUpperCase()}</p>
+              </div>
+              <button onClick={() => setReviewOrder(null)} className="text-neutral-500 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-1 text-xs">
+              <label className="font-bold text-neutral-400">Select Item to Review</label>
+              <select
+                value={selectedItem ? JSON.stringify(selectedItem) : ''}
+                onChange={(e) => setSelectedItem(e.target.value ? JSON.parse(e.target.value) : null)}
+                className="bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-2.5 text-white focus:outline-none"
+              >
+                {reviewOrder.items.map((item, idx) => (
+                  <option key={idx} value={JSON.stringify(item)}>{item.name} ({item.size})</option>
+                ))}
+              </select>
+            </div>
+
+            {selectedItem && (
+              <form onSubmit={handlePostReview} className="space-y-4 text-xs">
+                <div className="flex items-center gap-3">
+                  <span className="text-neutral-400">Rating:</span>
+                  <div className="flex gap-1.5">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        type="button"
+                        key={star}
+                        onClick={() => setRating(star)}
+                        className="text-amber-500 hover:scale-110 transition-transform"
+                      >
+                        <Star className={`w-5 h-5 ${star <= rating ? 'fill-amber-500 text-amber-500' : 'text-neutral-700'}`} />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="font-bold text-neutral-400 block">Comments</label>
+                  <textarea
+                    rows="3"
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    placeholder="Describe your dining experience..."
+                    required
+                    className="w-full bg-neutral-950 border border-neutral-800 rounded-xl p-3 text-white focus:outline-none focus:border-orange-500 transition-colors"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={submittingReview}
+                  className="w-full py-3 bg-[#FF6B00] hover:bg-[#e05e00] rounded-xl text-white font-bold transition-all disabled:opacity-50"
+                >
+                  {submittingReview ? 'Submitting...' : 'Submit Feedback'}
+                </button>
+
+                {reviewMessage && (
+                  <p className="text-center text-xs font-semibold text-emerald-400 mt-2">{reviewMessage}</p>
+                )}
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
