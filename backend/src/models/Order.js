@@ -89,6 +89,11 @@ const orderSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    outlet: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Outlet',
+      index: true,
+    },
     items: [orderItemSchema],
     totalAmount: {
       type: Number,
@@ -164,6 +169,8 @@ const orderSchema = new mongoose.Schema(
       street: { type: String, required: true },
       city: { type: String, required: true },
       zipCode: { type: String, required: true },
+      lat: { type: Number, default: 12.9716 }, // Default Bangalore
+      lng: { type: Number, default: 77.5946 },
     },
     phone: {
       type: String,
@@ -211,6 +218,18 @@ const orderSchema = new mongoose.Schema(
       deliveryOTP: {
         type: String,
         default: '',
+      },
+      otpGeneratedAt: {
+        type: Date,
+        default: null,
+      },
+      otpAttempts: {
+        type: Number,
+        default: 0,
+      },
+      otpResendCount: {
+        type: Number,
+        default: 0,
       },
       acceptedAt: { type: Date },
       pickedUpAt: { type: Date },

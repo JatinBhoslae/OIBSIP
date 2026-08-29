@@ -90,6 +90,12 @@ export default function Login() {
 
         <div className="text-center pt-2 space-y-3">
           <p className="text-xs text-neutral-500">
+            Forgot your password?{' '}
+            <Link to="/forgot-password" className="text-[#FF6B00] hover:underline font-bold">
+              Reset it
+            </Link>
+          </p>
+          <p className="text-xs text-neutral-500">
             Don't have an account?{' '}
             <Link to="/register" className="text-[#FF6B00] hover:underline font-bold">
               Sign up

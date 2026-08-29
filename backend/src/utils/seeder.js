@@ -140,6 +140,19 @@ const seedData = async () => {
     const createdCoupons = await Coupon.insertMany(coupons);
     console.log(`${createdCoupons.length} Coupons seeded.`);
 
+    // Seed Dummy Outlets (Approx 20km apart in Mumbai/Bangalore etc)
+    const Outlet = (await import('../models/Outlet.js')).default;
+    await Outlet.deleteMany();
+    const outlets = [
+      { name: 'PizzaHub Downtown (Central)', address: { street: 'MG Road', city: 'Bangalore', zipCode: '560001' }, location: { lat: 12.9716, lng: 77.5946 } },
+      { name: 'PizzaHub North (Yelahanka)', address: { street: 'BB Road', city: 'Bangalore', zipCode: '560064' }, location: { lat: 13.1007, lng: 77.5963 } }, // ~15-20km North
+      { name: 'PizzaHub South (Electronic City)', address: { street: 'Hosur Road', city: 'Bangalore', zipCode: '560100' }, location: { lat: 12.8452, lng: 77.6602 } }, // ~20km South
+      { name: 'PizzaHub East (Whitefield)', address: { street: 'ITPL Main Rd', city: 'Bangalore', zipCode: '560066' }, location: { lat: 12.9698, lng: 77.7499 } }, // ~20km East
+      { name: 'PizzaHub West (Kengeri)', address: { street: 'Mysore Road', city: 'Bangalore', zipCode: '560060' }, location: { lat: 12.9175, lng: 77.4812 } }, // ~15km West
+    ];
+    const createdOutlets = await Outlet.insertMany(outlets);
+    console.log(`${createdOutlets.length} Outlets seeded.`);
+
     // Create a default admin user
     // Email: admin@pizzahub.com, Password: adminpassword
     await User.create({

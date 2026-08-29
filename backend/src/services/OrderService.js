@@ -5,6 +5,8 @@ import Coupon from '../models/Coupon.js';
 import { generateOrderNumber, generateTrackingCode, generateInvoiceNumber } from '../utils/orderGenerators.js';
 import { getIO } from '../utils/socket.js';
 import sendEmail from '../utils/nodemailer.js';
+import { findNearestOutlet } from './OutletAssignmentService.js';
+import { etaMinutes } from '../utils/geo.js';
 
 /**
  * Creates a new order with auto-generated orderNumber, trackingCode, invoiceNumber, and initial audit trail.
@@ -17,6 +19,19 @@ export const createOrderService = async (orderData, userId) => {
     error.statusCode = 400;
     throw error;
   }
+
+  // ── Smart Routing: find nearest outlet BEFORE proceeding ──
+  const customerLat = shippingAddress.lat || 12.9716;
+  const customerLng = shippingAddress.lng || 77.5946;
+  const nearestResult = await findNearestOutlet(customerLat, customerLng);
+
+  if (!nearestResult) {
+    const error = new Error('Sorry, your location is currently outside our delivery range. No outlet nearby.');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const { outlet: assignedOutlet, distanceKm } = nearestResult;
 
   let subTotal = 0;
   const validatedItems = [];
@@ -137,8 +152,9 @@ export const createOrderService = async (orderData, userId) => {
   const trackingCode = generateTrackingCode();
   const invoiceNumber = await generateInvoiceNumber();
 
-  // Calculated estimated delivery (+45 minutes from now)
-  const estimatedDeliveryTime = new Date(Date.now() + 45 * 60 * 1000);
+  // ETA based on distance at 500m/min
+  const eta = etaMinutes(distanceKm);
+  const estimatedDeliveryTime = new Date(Date.now() + eta * 60000);
 
   const initialStatusHistory = [
     {
@@ -146,7 +162,7 @@ export const createOrderService = async (orderData, userId) => {
       timestamp: new Date(),
       updatedBy: userId,
       role: 'customer',
-      remarks: 'Order placed successfully by customer.',
+      remarks: `Order placed. Assigned to outlet: ${assignedOutlet.name} (${distanceKm} km away, ETA ~${eta} min).`,
     },
   ];
 
@@ -155,6 +171,7 @@ export const createOrderService = async (orderData, userId) => {
     trackingCode,
     invoiceNumber,
     user: userId,
+    outlet: assignedOutlet._id,
     items: validatedItems,
     totalAmount: subTotal,
     discountAmount,
@@ -170,10 +187,16 @@ export const createOrderService = async (orderData, userId) => {
     estimatedDeliveryTime,
   });
 
-  // Emit Socket Event
+  // Emit Socket Events
   const io = getIO();
   if (io) {
     io.to('admin-room').emit('orderCreated', order);
+    io.to(`outlet-${assignedOutlet._id}`).emit('newOrderToOutlet', {
+      order,
+      outletName: assignedOutlet.name,
+      distanceKm,
+      etaMinutes: eta,
+    });
   }
 
   return order;

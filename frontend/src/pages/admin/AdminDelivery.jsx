@@ -15,14 +15,18 @@ import {
   TrendingUp,
   Map,
   Shield,
-  Activity
+  Activity,
+  Store
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function AdminDelivery() {
   const socket = useContext(SocketContext);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('fleet'); // 'fleet' or 'outlets'
+
   const [partners, setPartners] = useState([]);
+  const [outlets, setOutlets] = useState([]);
   const [pendingOrders, setPendingOrders] = useState([]);
   const [activePartnerLocations, setActivePartnerLocations] = useState({});
   const [showAddModal, setShowAddModal] = useState(false);
@@ -47,12 +51,18 @@ export default function AdminDelivery() {
 
   const fetchDashboardData = async () => {
     try {
-      const partnersRes = await api.get('/admin/delivery-partners/partners');
-      // Fetch orders to assign (Confirmed / Preparing / Ready etc but unassigned or ready to deliver)
-      const ordersRes = await api.get('/orders'); // Get all orders, filter for ready/preparing without partner
+      const [partnersRes, ordersRes, outletsRes] = await Promise.all([
+        api.get('/admin/delivery-partners/partners'),
+        api.get('/orders'),
+        api.get('/admin/outlets')
+      ]);
       
       if (partnersRes.data.success) {
         setPartners(partnersRes.data.data);
+      }
+
+      if (outletsRes.data.success) {
+        setOutlets(outletsRes.data.data);
       }
 
       if (ordersRes.data.success) {
@@ -88,15 +98,20 @@ export default function AdminDelivery() {
           lng: data.lng,
           lastUpdated: new Date(),
           orderId: data.orderId,
-          deliveryStatus: data.deliveryStatus
+          deliveryStatus: data.deliveryStatus,
+          etaMinutes: data.etaMinutes,
         }
       }));
     };
 
     socket.on('partnerLocationUpdated', handleLocationUpdate);
+    socket.on('adminDeliveryStatusChanged', () => fetchDashboardData());
+    socket.on('adminDeliveryCompleted', () => fetchDashboardData());
 
     return () => {
       socket.off('partnerLocationUpdated', handleLocationUpdate);
+      socket.off('adminDeliveryStatusChanged');
+      socket.off('adminDeliveryCompleted');
     };
   }, [socket]);
 
@@ -140,7 +155,6 @@ export default function AdminDelivery() {
     try {
       const res = await api.get('/admin/delivery-partners/smart-suggestions');
       if (res.data.success) {
-        // Suggestions returned from recommendation system
         setSuggestions(res.data.data);
       }
     } catch (err) {
@@ -180,18 +194,18 @@ export default function AdminDelivery() {
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Topbar onMenuOpen={() => setSidebarOpen(true)} title="Live Delivery & Fleet Dispatch" />
+        <Topbar onMenuOpen={() => setSidebarOpen(true)} title="Delivery & Dispatch Network" />
 
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* Dashboard metrics KPIs */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div className="bg-[#111827] border border-neutral-800 p-5 rounded-2xl flex items-center justify-between">
               <div>
-                <p className="text-xs text-neutral-400 uppercase font-semibold">Total Drivers</p>
-                <h3 className="text-2xl font-black mt-1">{totalPartners}</h3>
+                <p className="text-xs text-neutral-400 uppercase font-semibold">Total Outlets</p>
+                <h3 className="text-2xl font-black mt-1">{outlets.length}</h3>
               </div>
-              <div className="w-12 h-12 rounded-xl bg-orange-500/10 text-orange-400 flex items-center justify-center">
-                <Truck className="w-6 h-6" />
+              <div className="w-12 h-12 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center">
+                <Store className="w-6 h-6" />
               </div>
             </div>
 
@@ -255,6 +269,9 @@ export default function AdminDelivery() {
                           <div>
                             <span className="font-bold text-[#FF6B00]">{partnerObj?.name || 'Driver'}</span>
                             <p className="text-[10px] text-neutral-400 mt-0.5">Status: {loc.deliveryStatus}</p>
+                            {loc.etaMinutes !== null && loc.etaMinutes !== undefined && (
+                              <p className="text-[10px] text-emerald-400 mt-0.5">ETA: ~{Math.round(loc.etaMinutes)} mins</p>
+                            )}
                           </div>
                           <div className="text-right text-[10px] text-neutral-500 font-mono">
                             <div>Lat: {loc.lat.toFixed(4)}</div>
@@ -299,6 +316,7 @@ export default function AdminDelivery() {
                           <h4 className="text-xs font-bold text-neutral-200 mt-0.5">
                             {order.shippingAddress?.addressLine1}
                           </h4>
+                          <p className="text-[10px] text-neutral-400 mt-0.5">Assigned to: {order.outlet?.name || 'Nearest Outlet'}</p>
                         </div>
                         <span className="text-xs font-bold text-orange-400">₹{order.grandTotal}</span>
                       </div>
@@ -329,6 +347,7 @@ export default function AdminDelivery() {
                           <div>
                             <span className="font-bold text-neutral-200">{s.name}</span>
                             <div className="text-[10px] text-neutral-500 mt-0.5">Score: {s.score.toFixed(1)} pts</div>
+                            <div className="text-[10px] text-neutral-500 mt-0.5">Distance: {s.distanceKm.toFixed(1)} km</div>
                           </div>
                           <button
                             onClick={() => handleAssign(s.partnerId)}
@@ -349,90 +368,178 @@ export default function AdminDelivery() {
             </div>
           </div>
 
-          {/* Fleet Driver Directory */}
+          {/* Directory Tabs */}
           <div className="bg-[#111827] border border-neutral-800 rounded-3xl p-6">
             <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6">
               <div>
-                <h3 className="text-base font-bold">Fleet Directory</h3>
-                <p className="text-xs text-neutral-400">Manage, onboarding, approve and suspend delivery partners</p>
+                <h3 className="text-base font-bold">Network Directory</h3>
+                <p className="text-xs text-neutral-400">Manage outlets and delivery partners</p>
               </div>
-              <button
-                onClick={() => setShowAddModal(true)}
-                className="bg-[#FF6B00] hover:bg-[#e05e00] text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2"
-              >
-                <Plus className="w-4 h-4" /> Onboard Partner
-              </button>
+              <div className="flex items-center gap-4 bg-neutral-950 p-1 rounded-xl">
+                <button
+                  onClick={() => setActiveTab('fleet')}
+                  className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                    activeTab === 'fleet' ? 'bg-neutral-800 text-white' : 'text-neutral-500 hover:text-neutral-300'
+                  }`}
+                >
+                  Fleet Directory
+                </button>
+                <button
+                  onClick={() => setActiveTab('outlets')}
+                  className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                    activeTab === 'outlets' ? 'bg-neutral-800 text-white' : 'text-neutral-500 hover:text-neutral-300'
+                  }`}
+                >
+                  Outlets & Hubs
+                </button>
+              </div>
+              {activeTab === 'fleet' && (
+                <button
+                  onClick={() => setShowAddModal(true)}
+                  className="bg-[#FF6B00] hover:bg-[#e05e00] text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2"
+                >
+                  <Plus className="w-4 h-4" /> Onboard Partner
+                </button>
+              )}
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-neutral-800 text-neutral-400">
-                    <th className="py-3 font-semibold">Driver Info</th>
-                    <th className="py-3 font-semibold">Vehicle</th>
-                    <th className="py-3 font-semibold">Availability</th>
-                    <th className="py-3 font-semibold">Performance</th>
-                    <th className="py-3 font-semibold">Account Status</th>
-                    <th className="py-3 font-semibold">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-neutral-800">
-                  {partners.map((p) => (
-                    <tr key={p._id} className="hover:bg-neutral-800/20">
-                      <td className="py-4">
-                        <div className="font-bold text-neutral-200">{p.name}</div>
-                        <div className="text-[10px] text-neutral-500 mt-0.5">{p.email} | {p.phone}</div>
-                      </td>
-                      <td className="py-4">
-                        <div className="text-neutral-300 font-semibold">{p.vehicleType}</div>
-                        <div className="text-[10px] text-neutral-500 font-mono mt-0.5">{p.vehicleNumber}</div>
-                      </td>
-                      <td className="py-4">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          p.availabilityStatus === 'AVAILABLE'
-                            ? 'bg-emerald-500/20 text-emerald-400'
-                            : p.availabilityStatus === 'BUSY'
-                            ? 'bg-amber-500/20 text-amber-400'
-                            : 'bg-neutral-800 text-neutral-500'
-                        }`}>
-                          {p.availabilityStatus}
-                        </span>
-                      </td>
-                      <td className="py-4">
-                        <div>⭐⭐⭐⭐⭐ {p.averageRating}</div>
-                        <div className="text-[10px] text-neutral-500 mt-0.5">Delivered: {p.completedDeliveries}</div>
-                      </td>
-                      <td className="py-4">
-                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                          p.status === 'ACTIVE'
-                            ? 'bg-emerald-500/10 text-emerald-400'
-                            : 'bg-rose-500/10 text-rose-400'
-                        }`}>
-                          {p.status}
-                        </span>
-                      </td>
-                      <td className="py-4 space-x-2">
-                        {p.status === 'PENDING' || p.status === 'INACTIVE' ? (
-                          <button
-                            onClick={() => handleStatusChange(p._id, 'ACTIVE')}
-                            className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1 rounded font-bold text-[10px]"
-                          >
-                            Approve
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => handleStatusChange(p._id, 'INACTIVE')}
-                            className="bg-rose-500 hover:bg-rose-600 text-white px-3 py-1 rounded font-bold text-[10px]"
-                          >
-                            Suspend
-                          </button>
-                        )}
-                      </td>
+            {/* Fleet Tab */}
+            {activeTab === 'fleet' && (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-neutral-800 text-neutral-400">
+                      <th className="py-3 font-semibold">Driver Info</th>
+                      <th className="py-3 font-semibold">Vehicle & Base</th>
+                      <th className="py-3 font-semibold">Status / OTP</th>
+                      <th className="py-3 font-semibold">Earnings & Perf</th>
+                      <th className="py-3 font-semibold">Account</th>
+                      <th className="py-3 font-semibold">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-800">
+                    {partners.map((p) => {
+                      const activeDel = p.activeDelivery;
+                      let otpStatus = 'N/A';
+                      if (activeDel?.deliveryInfo?.deliveryStatus === 'REACHED_CUSTOMER') {
+                         otpStatus = `Generated (${activeDel.deliveryInfo.otpAttempts}/3 attempts)`;
+                      } else if (activeDel?.deliveryInfo?.deliveryStatus === 'DELIVERED') {
+                         otpStatus = 'Verified';
+                      }
+
+                      return (
+                        <tr key={p._id} className="hover:bg-neutral-800/20">
+                          <td className="py-4">
+                            <div className="font-bold text-neutral-200">{p.name}</div>
+                            <div className="text-[10px] text-neutral-500 mt-0.5">{p.email} | {p.phone}</div>
+                          </td>
+                          <td className="py-4">
+                            <div className="text-neutral-300 font-semibold">{p.vehicleType}</div>
+                            <div className="text-[10px] text-neutral-500 font-mono mt-0.5">{p.vehicleNumber}</div>
+                            <div className="text-[10px] text-[#FF6B00] mt-0.5 line-clamp-1 max-w-[120px]">{p.outlet?.name || 'Unassigned'}</div>
+                          </td>
+                          <td className="py-4">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold inline-block mb-1 ${
+                              p.availabilityStatus === 'AVAILABLE'
+                                ? 'bg-emerald-500/20 text-emerald-400'
+                                : p.availabilityStatus === 'BUSY'
+                                ? 'bg-amber-500/20 text-amber-400'
+                                : 'bg-neutral-800 text-neutral-500'
+                            }`}>
+                              {p.availabilityStatus}
+                            </span>
+                            {p.availabilityStatus === 'BUSY' && (
+                              <div className="text-[10px] text-neutral-400 font-medium">OTP: {otpStatus}</div>
+                            )}
+                          </td>
+                          <td className="py-4">
+                            <div className="text-neutral-300 font-bold">₹{p.analytics?.monthlyIncome || 0} / mo</div>
+                            <div className="text-[10px] text-neutral-500 mt-0.5">Rating: {p.averageRating?.toFixed(1) || '5.0'} ⭐</div>
+                            <div className="text-[10px] text-neutral-500">Delivered: {p.completedDeliveries}</div>
+                          </td>
+                          <td className="py-4">
+                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                              p.status === 'ACTIVE'
+                                ? 'bg-emerald-500/10 text-emerald-400'
+                                : 'bg-rose-500/10 text-rose-400'
+                            }`}>
+                              {p.status}
+                            </span>
+                          </td>
+                          <td className="py-4 space-x-2">
+                            {p.status === 'PENDING' || p.status === 'INACTIVE' ? (
+                              <button
+                                onClick={() => handleStatusChange(p._id, 'ACTIVE')}
+                                className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1 rounded font-bold text-[10px]"
+                              >
+                                Approve
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleStatusChange(p._id, 'INACTIVE')}
+                                className="bg-rose-500 hover:bg-rose-600 text-white px-3 py-1 rounded font-bold text-[10px]"
+                              >
+                                Suspend
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Outlets Tab */}
+            {activeTab === 'outlets' && (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-neutral-800 text-neutral-400">
+                      <th className="py-3 font-semibold">Outlet Name</th>
+                      <th className="py-3 font-semibold">Location Area</th>
+                      <th className="py-3 font-semibold">Coordinates</th>
+                      <th className="py-3 font-semibold">Service Radius</th>
+                      <th className="py-3 font-semibold">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-800">
+                    {outlets.map((outlet) => (
+                      <tr key={outlet._id} className="hover:bg-neutral-800/20">
+                        <td className="py-4">
+                          <div className="font-bold text-neutral-200">{outlet.name}</div>
+                        </td>
+                        <td className="py-4">
+                          <div className="text-neutral-400">{outlet.address}</div>
+                        </td>
+                        <td className="py-4">
+                          <div className="text-[10px] font-mono text-neutral-500">
+                            Lat: {outlet.location.lat.toFixed(4)}<br />
+                            Lng: {outlet.location.lng.toFixed(4)}
+                          </div>
+                        </td>
+                        <td className="py-4">
+                          <div className="text-neutral-300">{outlet.serviceRadiusKm} km</div>
+                        </td>
+                        <td className="py-4">
+                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                            outlet.isActive ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'
+                          }`}>
+                            {outlet.isActive ? 'Active' : 'Closed'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {outlets.length === 0 && (
+                  <div className="text-center text-neutral-500 py-10 text-xs">
+                    No outlets registered. Run the seeder script to populate dummy outlets.
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>

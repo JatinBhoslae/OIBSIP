@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ChatWidget from '../components/common/ChatWidget';
+import DeliveryChatbot from '../components/delivery/DeliveryChatbot';
 
 export default function DeliveryDashboard() {
   const { user, logout } = useContext(AuthContext);
@@ -155,6 +156,19 @@ export default function DeliveryDashboard() {
     }
   };
 
+  // Haversine formula to calculate distance between two coordinates in km
+  const calculateDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371; // Radius of the earth in km
+    const dLat = (lat2 - lat1) * (Math.PI / 180);
+    const dLon = (lon2 - lon1) * (Math.PI / 180);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+
   // Start GPS Simulation
   const toggleGpsSimulation = () => {
     if (gpsSimulating) {
@@ -166,18 +180,20 @@ export default function DeliveryDashboard() {
       setGpsSimulating(true);
       setLocationStatus('Simulating Active GPS...');
       
-      // Let's mock a starting location near a central point (e.g. Bangalore center: 12.9716, 77.5946)
-      let currentLat = activeOrder?.shippingAddress?.lat || 12.9716;
-      let currentLng = activeOrder?.shippingAddress?.lng || 77.5946;
-      
-      // Start slightly offset to simulate movement towards customer
-      let currentStep = 0;
-      const totalSteps = 15;
-      
       const storeLat = 12.9700; 
       const storeLng = 77.5900;
       const destLat = activeOrder?.shippingAddress?.lat || 12.9780;
       const destLng = activeOrder?.shippingAddress?.lng || 77.6010;
+
+      const totalDistanceKm = calculateDistance(storeLat, storeLng, destLat, destLng);
+      const totalDistanceMeters = totalDistanceKm * 1000;
+      
+      // Speed: 500 meters per minute = 8.33 meters per second
+      // Update interval: 5 seconds -> covers 41.65 meters per tick
+      const distancePerTick = (500 / 60) * 5; 
+      const totalSteps = Math.ceil(totalDistanceMeters / distancePerTick);
+      
+      let currentStep = 0;
 
       // Update backend location periodically
       const interval = setInterval(async () => {
@@ -287,6 +303,22 @@ export default function DeliveryDashboard() {
               <h4 className="text-lg font-black">{partner?.averageRating?.toFixed(1) || '5.0'}</h4>
             </div>
           </div>
+        </div>
+
+        {/* Financial Analytics */}
+        <div className="grid grid-cols-3 gap-2">
+           <div className="bg-neutral-900 border border-neutral-800 p-3 rounded-2xl flex flex-col justify-center items-center">
+              <p className="text-[10px] text-neutral-400 uppercase text-center">Rev/Order</p>
+              <h4 className="text-base font-black text-[#22C55E]">₹{partner?.analytics?.revenuePerDelivery || 0}</h4>
+           </div>
+           <div className="bg-neutral-900 border border-neutral-800 p-3 rounded-2xl flex flex-col justify-center items-center">
+              <p className="text-[10px] text-neutral-400 uppercase text-center">Monthly</p>
+              <h4 className="text-base font-black text-[#22C55E]">₹{partner?.analytics?.monthlyIncome || 0}</h4>
+           </div>
+           <div className="bg-neutral-900 border border-neutral-800 p-3 rounded-2xl flex flex-col justify-center items-center">
+              <p className="text-[10px] text-neutral-400 uppercase text-center">Yearly</p>
+              <h4 className="text-base font-black text-[#22C55E]">₹{partner?.analytics?.yearlyIncome || 0}</h4>
+           </div>
         </div>
 
         {/* Active assignment card */}
@@ -407,6 +439,24 @@ export default function DeliveryDashboard() {
                     >
                       Verify OTP & Complete Delivery
                     </button>
+                    
+                    {activeOrder.deliveryInfo?.deliveryStatus === 'REACHED_CUSTOMER' && (
+                      <button
+                        onClick={async () => {
+                          try {
+                            const res = await api.post(`/delivery/orders/${activeOrder._id}/resend-otp`);
+                            if (res.data.success) {
+                              toast.success('OTP Resent Successfully');
+                            }
+                          } catch (err) {
+                            toast.error(err.response?.data?.message || 'Failed to resend OTP');
+                          }
+                        }}
+                        className="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-black text-xs py-2.5 rounded-xl transition-all flex items-center justify-center gap-2"
+                      >
+                        Resend OTP to Customer
+                      </button>
+                    )}
 
                     <button
                       onClick={handleFailOrder}
@@ -495,6 +545,9 @@ export default function DeliveryDashboard() {
       {activeOrder && (
         <ChatWidget orderId={activeOrder._id} deliveryPartnerId={partner?._id} />
       )}
+
+      {/* AI Chatbot Widget */}
+      <DeliveryChatbot />
     </div>
   );
 }

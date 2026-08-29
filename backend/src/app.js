@@ -36,6 +36,8 @@ import deliveryPartnerRoutes from './routes/deliveryPartnerRoutes.js';
 import adminDeliveryRoutes from './routes/adminDeliveryRoutes.js';
 import deliveryRatingRoutes from './routes/deliveryRatingRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
+import aiChatRoutes from './routes/aiChatRoutes.js';
+import outletRoutes from './routes/outletRoutes.js';
 
 // Connect Database
 connectDB();
@@ -146,8 +148,10 @@ app.use('/api/admin/inventory', inventoryRoutes);
 app.use('/api/admin/notifications', notificationRoutes);
 app.use('/api/admin/analytics', analyticsRoutes);
 app.use('/api/delivery', deliveryPartnerRoutes);
+app.use('/api/delivery/support', aiChatRoutes);
 app.use('/api/delivery-ratings', deliveryRatingRoutes);
 app.use('/api/admin/delivery-partners', adminDeliveryRoutes);
+app.use('/api/admin/outlets', outletRoutes);
 app.use('/api/admin', adminRoutes);
 
 // ─── Fallback Route ───

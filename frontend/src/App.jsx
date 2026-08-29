@@ -29,6 +29,8 @@ const MyOrders = lazy(() => import('./pages/MyOrders'));
 const OrderTracking = lazy(() => import('./pages/OrderTracking'));
 const CustomerLoyalty = lazy(() => import('./pages/CustomerLoyalty'));
 const OfflineFallback = lazy(() => import('./pages/OfflineFallback'));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
 
 // Admin Pages & Guards (Lazy loaded)
 import ProtectedAdminRoute from './components/admin/ProtectedAdminRoute';
@@ -51,6 +53,8 @@ const AdminSettings = lazy(() => import('./pages/admin/AdminSettings'));
 import ProtectedDeliveryRoute from './components/admin/ProtectedDeliveryRoute';
 const DeliveryLogin = lazy(() => import('./pages/DeliveryLogin'));
 const DeliveryDashboard = lazy(() => import('./pages/DeliveryDashboard'));
+const DeliveryEarnings = lazy(() => import('./pages/DeliveryEarnings'));
+const DeliveryHistory = lazy(() => import('./pages/DeliveryHistory'));
 const AdminDelivery = lazy(() => import('./pages/admin/AdminDelivery'));
 
 
@@ -109,6 +113,8 @@ export default function App() {
                       <Route path="/delivery/login" element={<DeliveryLogin />} />
                       <Route element={<ProtectedDeliveryRoute />}>
                         <Route path="/delivery/dashboard" element={<DeliveryDashboard />} />
+                        <Route path="/delivery/earnings" element={<DeliveryEarnings />} />
+                        <Route path="/delivery/history" element={<DeliveryHistory />} />
                       </Route>
 
                       {/* Dedicated Admin Routes */}
@@ -151,6 +157,8 @@ export default function App() {
                                 <Route path="/login" element={<Login />} />
                                 <Route path="/register" element={<Register />} />
                                 <Route path="/verify-otp" element={<VerifyOTP />} />
+                                <Route path="/forgot-password" element={<ForgotPassword />} />
+                                <Route path="/reset-password/:token" element={<ResetPassword />} />
                                 <Route path="/offline" element={<OfflineFallback />} />
                               </Routes>
                             </main>

@@ -1,35 +1,48 @@
 import DeliveryPartner from '../models/DeliveryPartner.js';
 import User from '../models/User.js';
 import Order from '../models/Order.js';
+import Outlet from '../models/Outlet.js';
+import { haversineKm } from '../utils/geo.js';
 
 /**
  * Smart Driver Selection Algorithm
- * Ranks active and available delivery partners using workload, rating, speed, and status.
+ * Ranks active and available delivery partners using workload, rating, speed, and distance.
+ * Uses the order's assigned outlet location (not hardcoded coords).
+ * Filters to partners scoped to the same outlet when available.
  */
-export const rankSuggestedDeliveryPartners = async () => {
-  const partners = await DeliveryPartner.find({
+export const rankSuggestedDeliveryPartners = async (orderId) => {
+  // Determine the outlet location from the order (if provided)
+  let outletLat = 19.0760; // Fallback: Mumbai
+  let outletLng = 72.8777;
+  let outletId = null;
+
+  if (orderId) {
+    const order = await Order.findById(orderId).populate('outlet');
+    if (order?.outlet) {
+      outletLat = order.outlet.location.lat;
+      outletLng = order.outlet.location.lng;
+      outletId = order.outlet._id;
+    }
+  }
+
+  // Build query — scope to outlet if the order has one
+  const query = {
     status: 'ACTIVE',
     availabilityStatus: 'AVAILABLE',
-  }).populate('user', 'name email phone');
+  };
+  if (outletId) {
+    // Prefer partners assigned to this outlet, but also include unassigned partners
+    query.$or = [{ outlet: outletId }, { outlet: null }, { outlet: { $exists: false } }];
+  }
 
-  const storeLat = 19.0760; // Mumbai Store Benchmark
-  const storeLng = 72.8777;
+  const partners = await DeliveryPartner.find(query).populate('user', 'name email phone');
 
   const scoredPartners = partners.map((p) => {
     // 1. Workload score (0 if busy, 100 if completely free)
     const workloadScore = p.activeDelivery ? 0 : 100;
 
-    // 2. Distance score (Haversine formula approximation)
-    const dLat = (p.currentLocation.lat - storeLat) * (Math.PI / 180);
-    const dLng = (p.currentLocation.lng - storeLng) * (Math.PI / 180);
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(storeLat * (Math.PI / 180)) *
-        Math.cos(p.currentLocation.lat * (Math.PI / 180)) *
-        Math.sin(dLng / 2) *
-        Math.sin(dLng / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const distanceKm = Math.round(6371 * c * 10) / 10;
+    // 2. Distance score (using shared Haversine)
+    const distanceKm = haversineKm(p.currentLocation.lat, p.currentLocation.lng, outletLat, outletLng);
 
     // Inverse distance score (closer is better)
     const distanceScore = Math.max(100 - distanceKm * 10, 0);
@@ -63,7 +76,8 @@ export const rankSuggestedDeliveryPartners = async () => {
 };
 
 /**
- * Assigns an order to a delivery partner with atomic locks
+ * Assigns an order to a delivery partner with atomic locks.
+ * OTP is no longer generated here — it's generated at REACHED_CUSTOMER.
  */
 export const assignOrderToPartner = async (orderId, partnerId, adminUser) => {
   const partner = await DeliveryPartner.findById(partnerId);
@@ -84,9 +98,6 @@ export const assignOrderToPartner = async (orderId, partnerId, adminUser) => {
     throw new Error('Order is already assigned and accepted by another driver');
   }
 
-  // Generate 4-digit Delivery OTP for customer verification
-  const deliveryOTP = Math.floor(1000 + Math.random() * 9000).toString();
-
   order.deliveryPartner = {
     partnerId: partner._id,
     name: partner.name,
@@ -98,7 +109,7 @@ export const assignOrderToPartner = async (orderId, partnerId, adminUser) => {
   order.deliveryInfo = {
     ...order.deliveryInfo,
     deliveryStatus: 'ASSIGNED',
-    deliveryOTP,
+    // OTP is NOT generated here anymore — it's generated at REACHED_CUSTOMER in DeliveryTrackingService
   };
 
   order.statusHistory.push({
@@ -116,5 +127,5 @@ export const assignOrderToPartner = async (orderId, partnerId, adminUser) => {
   partner.activeDelivery = order._id;
   await partner.save();
 
-  return { order, partner, deliveryOTP };
+  return { order, partner };
 };

@@ -1,10 +1,17 @@
+import mongoose from 'mongoose';
 import DeliveryPartner from '../models/DeliveryPartner.js';
 import Order from '../models/Order.js';
 import {
   updateLiveLocation,
   updateDeliveryStatus,
   completeDeliveryWithOTP,
+  resendDeliveryOTP,
 } from '../services/DeliveryTrackingService.js';
+import {
+  getMonthlyTotal,
+  getYearlyTotal,
+  getEarningsHistory,
+} from '../services/EarningService.js';
 
 export const getPartnerProfile = async (req, res, next) => {
   try {
@@ -19,7 +26,21 @@ export const getPartnerProfile = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Delivery partner profile not found' });
     }
 
-    return res.status(200).json({ success: true, data: partner });
+    // Fetch earnings summary
+    const partnerId = partner._id;
+    const [monthly, yearly] = await Promise.all([
+      getMonthlyTotal(partnerId),
+      getYearlyTotal(partnerId),
+    ]);
+
+    const analytics = {
+      monthlyIncome: monthly.total,
+      monthlyDeliveries: monthly.count,
+      yearlyIncome: yearly.total,
+      yearlyDeliveries: yearly.count,
+    };
+
+    return res.status(200).json({ success: true, data: { ...partner.toObject(), analytics } });
   } catch (error) {
     next(error);
   }
@@ -84,7 +105,6 @@ export const acceptAssignment = async (req, res, next) => {
 export const rejectAssignment = async (req, res, next) => {
   try {
     const { orderId } = req.params;
-    const { reason } = req.body;
     const partner = await DeliveryPartner.findOne({ user: req.user.id });
     if (!partner) return res.status(404).json({ success: false, message: 'Partner not found' });
 
@@ -147,5 +167,95 @@ export const verifyOTPAndComplete = async (req, res, next) => {
     return res.status(200).json({ success: true, message: 'Delivery completed successfully!', data: completedOrder });
   } catch (error) {
     return res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+export const resendOTP = async (req, res, next) => {
+  try {
+    const { orderId } = req.params;
+
+    const partner = await DeliveryPartner.findOne({ user: req.user.id });
+    if (!partner) return res.status(404).json({ success: false, message: 'Partner not found' });
+
+    const result = await resendDeliveryOTP(orderId, partner._id);
+    return res.status(200).json({ success: true, message: result.message });
+  } catch (error) {
+    return res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+// ── Earnings Endpoints ──
+
+export const getEarningsSummary = async (req, res, next) => {
+  try {
+    const partner = await DeliveryPartner.findOne({ user: req.user.id });
+    if (!partner) return res.status(404).json({ success: false, message: 'Partner not found' });
+
+    const [monthly, yearly] = await Promise.all([
+      getMonthlyTotal(partner._id),
+      getYearlyTotal(partner._id),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        monthTotal: monthly.total,
+        monthDeliveries: monthly.count,
+        yearTotal: yearly.total,
+        yearDeliveries: yearly.count,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getEarningsHistoryEndpoint = async (req, res, next) => {
+  try {
+    const partner = await DeliveryPartner.findOne({ user: req.user.id });
+    if (!partner) return res.status(404).json({ success: false, message: 'Partner not found' });
+
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+
+    const result = await getEarningsHistory(partner._id, { page, limit });
+    return res.status(200).json({ success: true, data: result });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getOrderHistory = async (req, res, next) => {
+  try {
+    const partner = await DeliveryPartner.findOne({ user: req.user.id });
+    if (!partner) return res.status(404).json({ success: false, message: 'Partner not found' });
+
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+
+    const [orders, totalCount] = await Promise.all([
+      Order.find({
+        'deliveryPartner.partnerId': partner._id,
+        status: 'Delivered',
+      })
+        .sort({ 'deliveryInfo.deliveredAt': -1 })
+        .skip(skip)
+        .limit(limit)
+        .select('orderNumber grandTotal shippingAddress deliveryInfo createdAt'),
+      Order.countDocuments({ 'deliveryPartner.partnerId': partner._id, status: 'Delivered' }),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        orders,
+        totalCount,
+        page,
+        totalPages: Math.ceil(totalCount / limit),
+      },
+    });
+  } catch (error) {
+    next(error);
   }
 };

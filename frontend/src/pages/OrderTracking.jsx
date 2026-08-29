@@ -15,6 +15,12 @@ export default function OrderTracking() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Rating Modal States
+  const [ratingModalOpen, setRatingModalOpen] = useState(false);
+  const [ratingScore, setRatingScore] = useState(5);
+  const [ratingFeedback, setRatingFeedback] = useState('');
+  const [hasRated, setHasRated] = useState(false);
+
   const fetchOrder = async () => {
     try {
       const res = await axios.get(`http://localhost:5001/api/orders/${id}`, {
@@ -75,6 +81,32 @@ export default function OrderTracking() {
       socket.off('deliveryLocationUpdated', handleLocationUpdated);
     };
   }, [socket, order?._id]);
+
+  useEffect(() => {
+    if (order?.status === 'Delivered' && !hasRated) {
+      // Check if user has already rated in previous sessions (optional enhancement)
+      setRatingModalOpen(true);
+    }
+  }, [order?.status, hasRated]);
+
+  const handleSubmitRating = async () => {
+    try {
+      await axios.post(
+        'http://localhost:5001/api/delivery/ratings',
+        {
+          orderId: order._id,
+          partnerId: order.deliveryPartner.partnerId,
+          rating: ratingScore,
+          feedback: ratingFeedback,
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setHasRated(true);
+      setRatingModalOpen(false);
+    } catch (err) {
+      console.error('Failed to submit rating:', err);
+    }
+  };
 
   const steps = [
     { key: 'Order Received', label: 'Order Received', desc: 'We have received your order' },
@@ -314,6 +346,49 @@ export default function OrderTracking() {
       {/* Real-time driver chat */}
       {order && order.deliveryPartner?.partnerId && (
         <ChatWidget orderId={order._id} deliveryPartnerId={order.deliveryPartner.partnerId} />
+      )}
+
+      {/* Rating Modal */}
+      {ratingModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+          <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-6 w-full max-w-md space-y-6">
+            <h2 className="text-2xl font-bold text-center">Rate your Delivery</h2>
+            <p className="text-sm text-neutral-400 text-center">How was your delivery experience with {order?.deliveryPartner?.partnerName || 'your partner'}?</p>
+            
+            <div className="flex justify-center gap-2">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  onClick={() => setRatingScore(star)}
+                  className={`text-4xl transition-all ${ratingScore >= star ? 'text-amber-400 scale-110' : 'text-neutral-700 hover:text-amber-400/50'}`}
+                >
+                  ★
+                </button>
+              ))}
+            </div>
+
+            <textarea
+              className="w-full bg-neutral-950 border border-neutral-800 rounded-xl p-4 text-sm text-white placeholder-neutral-500 focus:outline-none focus:border-orange-500 transition-colors"
+              placeholder="Any additional feedback? (optional)"
+              rows={3}
+              value={ratingFeedback}
+              onChange={(e) => setRatingFeedback(e.target.value)}
+            />
+
+            <button
+              onClick={handleSubmitRating}
+              className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3.5 rounded-xl transition-all"
+            >
+              Submit Rating
+            </button>
+            <button
+              onClick={() => setRatingModalOpen(false)}
+              className="w-full text-xs text-neutral-500 hover:text-white transition-colors"
+            >
+              Skip
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

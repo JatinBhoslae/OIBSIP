@@ -46,6 +46,8 @@ export const createDeliveryPartner = async (req, res, next) => {
   }
 };
 
+import { getMonthlyTotal } from '../services/EarningService.js';
+
 export const getDeliveryPartners = async (req, res, next) => {
   try {
     const { status, availability, search } = req.query;
@@ -64,19 +66,29 @@ export const getDeliveryPartners = async (req, res, next) => {
 
     const partners = await DeliveryPartner.find(query)
       .populate('user', 'name email phone')
-      .populate('activeDelivery', 'orderNumber status grandTotal shippingAddress')
+      .populate('activeDelivery', 'orderNumber status grandTotal shippingAddress deliveryInfo')
+      .populate('outlet', 'name location')
       .sort({ createdAt: -1 });
 
-    const total = partners.length;
-    const activeCount = partners.filter((p) => p.status === 'ACTIVE').length;
-    const availableCount = partners.filter((p) => p.availabilityStatus === 'AVAILABLE').length;
+    const partnersWithEarnings = await Promise.all(
+      partners.map(async (p) => {
+        const monthly = await getMonthlyTotal(p._id);
+        const obj = p.toObject();
+        obj.analytics = { monthlyIncome: monthly.total };
+        return obj;
+      })
+    );
+
+    const total = partnersWithEarnings.length;
+    const activeCount = partnersWithEarnings.filter((p) => p.status === 'ACTIVE').length;
+    const availableCount = partnersWithEarnings.filter((p) => p.availabilityStatus === 'AVAILABLE').length;
 
     return res.status(200).json({
       success: true,
       total,
       activeCount,
       availableCount,
-      data: partners,
+      data: partnersWithEarnings,
     });
   } catch (error) {
     next(error);

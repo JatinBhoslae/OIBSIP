@@ -14,7 +14,7 @@ const notificationSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['LOW_STOCK', 'OUT_OF_STOCK', 'RESTOCKED', 'SYSTEM', 'ORDER'],
+      enum: ['LOW_STOCK', 'OUT_OF_STOCK', 'RESTOCKED', 'SYSTEM', 'ORDER', 'DELIVERY_COMPLETED', 'SUPPORT_ESCALATION'],
       default: 'LOW_STOCK',
       required: true,
     },

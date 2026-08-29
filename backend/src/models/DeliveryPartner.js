@@ -68,6 +68,11 @@ const deliveryPartnerSchema = new mongoose.Schema(
       ref: 'Order',
       default: null,
     },
+    outlet: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Outlet',
+      index: true,
+    },
     completedDeliveries: {
       type: Number,
       default: 0,
