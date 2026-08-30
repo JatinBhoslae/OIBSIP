@@ -5,12 +5,12 @@
 import DeliveryPartner from '../models/DeliveryPartner.js';
 import Notification from '../models/Notification.js';
 import { getMonthlyTotal, getYearlyTotal } from './EarningService.js';
-import { PAYOUT_BASE, PAYOUT_PER_KM } from './EarningService.js';
+import { BASE_FEE, PER_KM_RATE } from './EarningService.js';
 
 const SYSTEM_PROMPT = `You are PizzaHub's delivery support assistant. You help delivery partners with their daily operations.
 
 Key policies:
-- Payout: ₹${PAYOUT_BASE} base per delivery + ₹${PAYOUT_PER_KM}/km distance bonus.
+- Payout: ₹${BASE_FEE} base per delivery + ₹${PER_KM_RATE}/km distance bonus.
 - OTP is sent to the customer's email and phone when you mark "Reached Customer". The OTP is valid for 10 minutes and allows 3 attempts. You can resend OTP with a 60-second cooldown.
 - If a customer is unreachable after 10 minutes, mark the delivery as "Failed" and return to the outlet.
 - For accidents or emergencies, call 112 first, then contact PizzaHub support at 1800-PIZZA-HUB.
@@ -70,7 +70,7 @@ const ruleBasedReply = (message) => {
     return 'The OTP is sent to the customer when you tap "Reached Customer". It\'s valid for 10 minutes with 3 attempts. Use the "Resend OTP" button if the customer didn\'t receive it (60-second cooldown).';
   }
   if (msg.includes('earning') || msg.includes('pay') || msg.includes('salary') || msg.includes('income')) {
-    return `Your payout is ₹${PAYOUT_BASE} base per delivery + ₹${PAYOUT_PER_KM}/km distance bonus. Check your Earnings page for monthly and yearly totals.`;
+    return `Your payout is ₹${BASE_FEE} base per delivery + ₹${PER_KM_RATE}/km distance bonus. Check your Earnings page for monthly and yearly totals.`;
   }
   if (msg.includes('hello') || msg.includes('hi') || msg.includes('hey')) {
     return 'Hello! I\'m the PizzaHub Support Assistant. How can I help you with your delivery today?';

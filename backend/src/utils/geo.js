@@ -1,35 +1,47 @@
 /**
- * Shared Geospatial Utilities
- * Haversine distance and ETA calculations used across the platform.
+ * Shared geospatial utilities for PizzaHub.
+ * All distance and ETA calculations should use these functions.
  */
 
 /**
- * Calculates the distance in kilometers between two lat/lng coordinates
- * using the Haversine formula.
- * @param {number} lat1
- * @param {number} lng1
- * @param {number} lat2
- * @param {number} lng2
- * @returns {number} Distance in km
+ * Calculate the distance between two points in kilometers using the Haversine formula.
+ * @param {number} lat1 - Latitude of first point in degrees
+ * @param {number} lng1 - Longitude of first point in degrees
+ * @param {number} lat2 - Latitude of second point in degrees
+ * @param {number} lng2 - Longitude of second point in degrees
+ * @returns {number} Distance in kilometers
  */
 export const haversineKm = (lat1, lng1, lat2, lng2) => {
   const R = 6371; // Earth's radius in km
-  const dLat = (lat2 - lat1) * (Math.PI / 180);
-  const dLng = (lng2 - lng1) * (Math.PI / 180);
+  const toRad = (deg) => deg * (Math.PI / 180);
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
   const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * (Math.PI / 180)) *
-      Math.cos(lat2 * (Math.PI / 180)) *
-      Math.sin(dLng / 2) *
-      Math.sin(dLng / 2);
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return Math.round(R * c * 10) / 10; // 1 decimal place
+  return R * c;
 };
 
 /**
- * Calculates the estimated time of arrival in minutes,
- * assuming a delivery speed of 500 meters per minute (0.5 km/min).
- * @param {number} distanceKm
- * @returns {number} ETA in minutes (rounded up)
+ * Estimate delivery ETA in minutes based on distance, assuming 500 m/min average speed.
+ * @param {number} distanceKm - Distance in kilometers
+ * @returns {number} Estimated minutes, rounded up to the nearest integer
  */
-export const etaMinutes = (distanceKm) => Math.ceil(distanceKm / 0.5);
+export const etaMinutes = (distanceKm) => {
+  const SPEED_KM_PER_MIN = 0.5; // 500 m/min
+  return Math.ceil(distanceKm / SPEED_KM_PER_MIN);
+};
+
+/**
+ * Check if a point is within a given radius (km) of another point.
+ * @param {number} lat1 - Latitude of center
+ * @param {number} lng1 - Longitude of center
+ * @param {number} lat2 - Latitude of target
+ * @param {number} lng2 - Longitude of target
+ * @param {number} radiusKm - Maximum distance in km
+ * @returns {boolean} True if within radius
+ */
+export const isWithinRadius = (lat1, lng1, lat2, lng2, radiusKm) => {
+  return haversineKm(lat1, lng1, lat2, lng2) <= radiusKm;
+};

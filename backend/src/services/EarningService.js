@@ -1,109 +1,175 @@
 import Earning from '../models/Earning.js';
-import { haversineKm } from '../utils/geo.js';
+import Order from '../models/Order.js';
+
+// Payout constants
+export const BASE_FEE = 30; // ₹
+export const PER_KM_RATE = 5; // ₹ per km
 
 /**
- * Payout constants — easy to tune later.
- * ₹30 base per delivery + ₹5 per km distance.
+ * Calculate earning amount for a delivery based on distance.
  */
-export const PAYOUT_BASE = 30; // INR
-export const PAYOUT_PER_KM = 5; // INR per km
-
-/**
- * Calculates the payout amount for a delivery based on distance.
- * @param {number} distanceKm
- * @returns {{ amount: number, basePay: number, perKmPay: number }}
- */
-export const calculatePayout = (distanceKm) => {
-  const basePay = PAYOUT_BASE;
-  const perKmPay = Math.round(distanceKm * PAYOUT_PER_KM);
-  const amount = basePay + perKmPay;
-  return { amount, basePay, perKmPay };
+export const calculateEarning = (distanceKm) => {
+  return BASE_FEE + PER_KM_RATE * distanceKm;
 };
 
 /**
- * Creates an earning record for a completed delivery.
- * @param {string} partnerId - DeliveryPartner ObjectId
- * @param {string} orderId - Order ObjectId
- * @param {Object} outletLocation - { lat, lng } of the assigned outlet
- * @param {Object} customerLocation - { lat, lng } from shippingAddress
- * @returns {Promise<Object>} The created Earning document
+ * Create an earning record for a completed delivery.
+ * Should be called when delivery status changes to DELIVERED.
  */
-export const createEarningRecord = async (partnerId, orderId, outletLocation, customerLocation) => {
-  const distanceKm = haversineKm(
-    outletLocation.lat,
-    outletLocation.lng,
-    customerLocation.lat,
-    customerLocation.lng
-  );
-  const { amount, basePay, perKmPay } = calculatePayout(distanceKm);
+export const createEarning = async (orderId, partnerId, distanceKm, completedAt = new Date()) => {
+  // Check if earning already exists for this order
+  const existing = await Earning.findOne({ order: orderId });
+  if (existing) {
+    return existing; // Idempotent
+  }
 
-  const earning = await Earning.create({
+  const amount = calculateEarning(distanceKm);
+
+  const earning = new Earning({
     deliveryPartner: partnerId,
     order: orderId,
     amount,
     distanceKm,
-    breakdown: { basePay, perKmPay },
+    baseFee: BASE_FEE,
+    perKmRate: PER_KM_RATE,
+    completedAt,
   });
 
+  await earning.save();
   return earning;
 };
 
 /**
- * Aggregates earnings for a partner within a date range.
- * @param {string} partnerId
- * @param {Date} startDate
- * @param {Date} endDate
- * @returns {Promise<number>} Total earnings in the range
+ * Get total earnings for a partner in a date range.
  */
-const aggregateEarnings = async (partnerId, startDate, endDate) => {
+export const getEarningsTotal = async (partnerId, startDate, endDate) => {
+  const match = {
+    deliveryPartner: partnerId,
+    completedAt: { $gte: startDate, $lte: endDate },
+  };
   const result = await Earning.aggregate([
-    {
-      $match: {
-        deliveryPartner: partnerId,
-        createdAt: { $gte: startDate, $lte: endDate },
-      },
-    },
-    { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } },
+    { $match: match },
+    { $group: { _id: null, total: { $sum: '$amount' } } },
   ]);
-  return result.length > 0 ? { total: result[0].total, count: result[0].count } : { total: 0, count: 0 };
+  return result.length > 0 ? result[0].total : 0;
 };
 
 /**
- * Gets the current month's earnings total.
+ * Get monthly total earnings for a partner.
+ * Returns total for the current calendar month (or specified month).
  */
-export const getMonthlyTotal = async (partnerId) => {
-  const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  return aggregateEarnings(partnerId, startOfMonth, now);
+export const getMonthlyTotal = async (partnerId, date = new Date()) => {
+  const start = new Date(date.getFullYear(), date.getMonth(), 1);
+  const end = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999);
+  return await getEarningsTotal(partnerId, start, end);
 };
 
 /**
- * Gets the current year's earnings total.
+ * Get yearly total earnings for a partner.
+ * Returns total for the current calendar year (or specified year).
  */
-export const getYearlyTotal = async (partnerId) => {
-  const now = new Date();
-  const startOfYear = new Date(now.getFullYear(), 0, 1);
-  return aggregateEarnings(partnerId, startOfYear, now);
+export const getYearlyTotal = async (partnerId, date = new Date()) => {
+  const start = new Date(date.getFullYear(), 0, 1);
+  const end = new Date(date.getFullYear() + 1, 0, 0, 23, 59, 59, 999);
+  return await getEarningsTotal(partnerId, start, end);
 };
 
 /**
- * Gets paginated per-delivery earnings history.
+ * Get all-time total earnings for a partner.
  */
-export const getEarningsHistory = async (partnerId, { page = 1, limit = 20 } = {}) => {
+export const getAllTimeTotal = async (partnerId) => {
+  const result = await Earning.aggregate([
+    { $match: { deliveryPartner: partnerId } },
+    { $group: { _id: null, total: { $sum: '$amount' } } },
+  ]);
+  return result.length > 0 ? result[0].total : 0;
+};
+
+/**
+ * Get paginated earnings history for a partner.
+ */
+export const getEarningsHistory = async (partnerId, page = 1, limit = 20) => {
   const skip = (page - 1) * limit;
-  const [earnings, totalCount] = await Promise.all([
+  const [earnings, total] = await Promise.all([
     Earning.find({ deliveryPartner: partnerId })
-      .sort({ createdAt: -1 })
+      .sort({ completedAt: -1 })
       .skip(skip)
       .limit(limit)
-      .populate('order', 'orderNumber grandTotal shippingAddress createdAt'),
+      .populate('order', 'orderNumber shippingAddress totalAmount'),
     Earning.countDocuments({ deliveryPartner: partnerId }),
   ]);
 
   return {
     earnings,
-    totalCount,
-    page,
-    totalPages: Math.ceil(totalCount / limit),
+    pagination: {
+      page,
+      limit,
+      total,
+      pages: Math.ceil(total / limit),
+    },
   };
+};
+
+/**
+ * Get earnings summary for a partner.
+ */
+export const getEarningsSummary = async (partnerId) => {
+  const now = new Date();
+  const [monthTotal, yearTotal, allTimeTotal, count] = await Promise.all([
+    getMonthlyTotal(partnerId, now),
+    getYearlyTotal(partnerId, now),
+    getAllTimeTotal(partnerId),
+    Earning.countDocuments({ deliveryPartner: partnerId }),
+  ]);
+
+  return {
+    monthTotal,
+    yearTotal,
+    allTimeTotal,
+    totalDeliveries: count,
+    baseFee: BASE_FEE,
+    perKmRate: PER_KM_RATE,
+  };
+};
+
+/**
+ * Get earnings by month for a given year (for charts).
+ */
+export const getMonthlyEarningsForYear = async (partnerId, year) => {
+  const start = new Date(year, 0, 1);
+  const end = new Date(year + 1, 0, 0, 23, 59, 59, 999);
+
+  const results = await Earning.aggregate([
+    {
+      $match: {
+        deliveryPartner: partnerId,
+        completedAt: { $gte: start, $lte: end },
+      },
+    },
+    {
+      $group: {
+        _id: { month: { $month: '$completedAt' } },
+        total: { $sum: '$amount' },
+        count: { $sum: 1 },
+      },
+    },
+    { $sort: { '_id.month': 1 } },
+  ]);
+
+  // Fill in missing months with zero
+  const monthlyData = Array.from({ length: 12 }, (_, i) => ({
+    month: i + 1,
+    total: 0,
+    count: 0,
+  }));
+
+  results.forEach((r) => {
+    monthlyData[r._id.month - 1] = {
+      month: r._id.month,
+      total: r.total,
+      count: r.count,
+    };
+  });
+
+  return monthlyData;
 };

@@ -7,7 +7,7 @@ import { getIO } from '../utils/socket.js';
 import { haversineKm, etaMinutes } from '../utils/geo.js';
 import sendEmail from '../utils/nodemailer.js';
 import { sendDeliveryOTPSms } from './SmsService.js';
-import { createEarningRecord } from './EarningService.js';
+import { createEarning } from './EarningService.js';
 
 /**
  * Validates GPS coordinates
@@ -249,7 +249,8 @@ export const completeDeliveryWithOTP = async (orderId, partnerId, enteredOTP) =>
       lat: order.shippingAddress?.lat || 12.9716,
       lng: order.shippingAddress?.lng || 77.5946,
     };
-    await createEarningRecord(partner._id, order._id, outletLocation, customerLocation);
+    const distanceKm = haversineKm(outletLocation.lat, outletLocation.lng, customerLocation.lat, customerLocation.lng);
+    await createEarning(order._id, partner._id, distanceKm);
   } catch (err) {
     console.error('[Earning] Failed to create earning record:', err.message);
   }
