@@ -105,6 +105,7 @@ export default function Login() {
             <p className="font-semibold text-neutral-400 mb-1">Demo Accounts</p>
             <p>Admin: admin@pizzahub.com / adminpassword</p>
             <p>Customer: customer@pizzahub.com / customerpassword</p>
+            <p>Driver: delivery@pizzahub.com / deliverypassword</p>
           </div>
         </div>
       </motion.div>

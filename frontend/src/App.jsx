@@ -28,6 +28,7 @@ const Checkout = lazy(() => import('./pages/Checkout'));
 const MyOrders = lazy(() => import('./pages/MyOrders'));
 const OrderTracking = lazy(() => import('./pages/OrderTracking'));
 const CustomerLoyalty = lazy(() => import('./pages/CustomerLoyalty'));
+const Profile = lazy(() => import('./pages/Profile'));
 const OfflineFallback = lazy(() => import('./pages/OfflineFallback'));
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
 const ResetPassword = lazy(() => import('./pages/ResetPassword'));
@@ -153,7 +154,8 @@ export default function App() {
                                 <Route path="/checkout" element={<Checkout />} />
                                 <Route path="/orders" element={<MyOrders />} />
                                 <Route path="/orders/:id" element={<OrderTracking />} />
-                                <Route path="/profile/loyalty" element={<CustomerLoyalty />} />
+                                <Route path="/profile" element={<Profile />} />
+                                <Route path="/profile/loyalty" element={<Navigate to="/profile" replace />} />
                                 <Route path="/login" element={<Login />} />
                                 <Route path="/register" element={<Register />} />
                                 <Route path="/verify-otp" element={<VerifyOTP />} />

@@ -106,11 +106,11 @@ export const assignOrderToPartner = async (orderId, partnerId, adminUser) => {
     assignedAt: new Date(),
   };
 
-  order.deliveryInfo = {
-    ...order.deliveryInfo,
-    deliveryStatus: 'ASSIGNED',
-    // OTP is NOT generated here anymore — it's generated at REACHED_CUSTOMER in DeliveryTrackingService
-  };
+  if (!order.deliveryInfo) {
+    order.deliveryInfo = {};
+  }
+  order.deliveryInfo.deliveryStatus = 'ASSIGNED';
+  // OTP is NOT generated here anymore — it's generated at REACHED_CUSTOMER in DeliveryTrackingService
 
   order.statusHistory.push({
     status: order.status,

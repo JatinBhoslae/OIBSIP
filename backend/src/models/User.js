@@ -51,6 +51,18 @@ const userSchema = new mongoose.Schema(
       enum: ['Bronze', 'Silver', 'Gold', 'Platinum'],
       default: 'Bronze',
     },
+    walletBalance: {
+      type: Number,
+      default: 0,
+    },
+    addresses: [
+      {
+        label: { type: String, default: 'Home' },
+        street: { type: String, required: true },
+        city: { type: String, required: true },
+        zipCode: { type: String, required: true },
+      },
+    ],
     referralCode: {
       type: String,
       unique: true,

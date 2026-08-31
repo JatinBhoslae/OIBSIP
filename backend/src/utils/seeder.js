@@ -144,11 +144,11 @@ const seedData = async () => {
     const Outlet = (await import('../models/Outlet.js')).default;
     await Outlet.deleteMany();
     const outlets = [
-      { name: 'PizzaHub Downtown (Central)', address: { street: 'MG Road', city: 'Bangalore', zipCode: '560001' }, location: { lat: 12.9716, lng: 77.5946 } },
-      { name: 'PizzaHub North (Yelahanka)', address: { street: 'BB Road', city: 'Bangalore', zipCode: '560064' }, location: { lat: 13.1007, lng: 77.5963 } }, // ~15-20km North
-      { name: 'PizzaHub South (Electronic City)', address: { street: 'Hosur Road', city: 'Bangalore', zipCode: '560100' }, location: { lat: 12.8452, lng: 77.6602 } }, // ~20km South
-      { name: 'PizzaHub East (Whitefield)', address: { street: 'ITPL Main Rd', city: 'Bangalore', zipCode: '560066' }, location: { lat: 12.9698, lng: 77.7499 } }, // ~20km East
-      { name: 'PizzaHub West (Kengeri)', address: { street: 'Mysore Road', city: 'Bangalore', zipCode: '560060' }, location: { lat: 12.9175, lng: 77.4812 } }, // ~15km West
+      { name: 'PizzaHub Downtown (Central)', address: 'MG Road, Bangalore, 560001', location: { lat: 12.9716, lng: 77.5946 } },
+      { name: 'PizzaHub North (Yelahanka)', address: 'BB Road, Bangalore, 560064', location: { lat: 13.1007, lng: 77.5963 } }, // ~15-20km North
+      { name: 'PizzaHub South (Electronic City)', address: 'Hosur Road, Bangalore, 560100', location: { lat: 12.8452, lng: 77.6602 } }, // ~20km South
+      { name: 'PizzaHub East (Whitefield)', address: 'ITPL Main Rd, Bangalore, 560066', location: { lat: 12.9698, lng: 77.7499 } }, // ~20km East
+      { name: 'PizzaHub West (Kengeri)', address: 'Mysore Road, Bangalore, 560060', location: { lat: 12.9175, lng: 77.4812 } }, // ~15km West
     ];
     const createdOutlets = await Outlet.insertMany(outlets);
     console.log(`${createdOutlets.length} Outlets seeded.`);

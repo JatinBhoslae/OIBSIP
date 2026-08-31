@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import Order from '../models/Order.js';
+import User from '../models/User.js';
 import Pizza from '../models/Pizza.js';
 import Ingredient from '../models/Ingredient.js';
 import Coupon from '../models/Coupon.js';
@@ -31,10 +32,10 @@ export const createOrder = async (req, res, next) => {
   try {
     const order = await createOrderService(req.body, req.user.id);
 
-    // Create Razorpay Order
+    // Create Razorpay Order only if grandTotal > 0
     const rzp = getRazorpayInstance();
     let razorpayOrderId = null;
-    if (rzp) {
+    if (order.grandTotal > 0 && rzp) {
       try {
         const razorpayOrder = await rzp.orders.create({
           amount: order.grandTotal * 100,
@@ -248,14 +249,14 @@ export const cancelOrder = async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
 
-    // Customer cancellation allowed only before Preparing
+    // Customer cancellation allowed only before Out For Delivery
     if (
       req.user.role !== 'admin' &&
-      !['Order Received', 'Pending Payment', 'pending', 'confirmed'].includes(order.status)
+      !['Order Received', 'Pending Payment', 'pending', 'confirmed', 'Preparing', 'Baking', 'Quality Check', 'Ready'].includes(order.status)
     ) {
       return res.status(400).json({
         success: false,
-        message: 'Order cannot be cancelled as preparation has already started',
+        message: 'Order cannot be cancelled as it has already been dispatched',
       });
     }
 
@@ -270,6 +271,22 @@ export const cancelOrder = async (req, res, next) => {
       role: req.user.role,
       remarks: reason || 'Order cancelled',
     });
+
+    // Refund logic: Add to wallet if paid online or wallet was used
+    const walletRefund = order.walletDeduction || 0;
+    const paymentRefund = order.paymentStatus === 'paid' ? order.grandTotal : 0;
+    const totalRefund = walletRefund + paymentRefund;
+
+    if (totalRefund > 0) {
+      const user = await User.findById(order.user);
+      if (user) {
+        user.walletBalance = (user.walletBalance || 0) + totalRefund;
+        await user.save();
+      }
+      if (order.paymentStatus === 'paid') {
+        order.paymentStatus = 'refunded';
+      }
+    }
 
     await order.save();
 

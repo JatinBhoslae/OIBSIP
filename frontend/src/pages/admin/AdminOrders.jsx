@@ -24,7 +24,8 @@ export default function AdminOrders() {
   // Selected Order Modal State
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showDriverModal, setShowDriverModal] = useState(false);
-  const [driverForm, setDriverForm] = useState({ name: '', phone: '', vehicleNumber: '' });
+  const [availablePartners, setAvailablePartners] = useState([]);
+  const [selectedPartnerId, setSelectedPartnerId] = useState('');
   const [showRefundModal, setShowRefundModal] = useState(false);
   const [refundForm, setRefundForm] = useState({ refundReason: '', refundNotes: '' });
 
@@ -124,14 +125,28 @@ export default function AdminOrders() {
     }
   };
 
+  const fetchAvailablePartners = async () => {
+    try {
+      const res = await axios.get('http://localhost:5001/api/admin/delivery-partners/partners?availability=AVAILABLE', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.data.success) {
+        setAvailablePartners(res.data.data);
+        if (res.data.data.length > 0) setSelectedPartnerId(res.data.data[0]._id);
+      }
+    } catch (err) {
+      console.error('Failed to fetch available partners:', err);
+    }
+  };
+
   const handleAssignDriver = async (e) => {
     e.preventDefault();
-    if (!selectedOrder) return;
+    if (!selectedOrder || !selectedPartnerId) return;
 
     try {
-      await axios.put(
-        `http://localhost:5001/api/orders/${selectedOrder._id}/assign-delivery`,
-        driverForm,
+      await axios.post(
+        `http://localhost:5001/api/admin/delivery-partners/assign/${selectedOrder._id}`,
+        { partnerId: selectedPartnerId },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setShowDriverModal(false);
@@ -139,6 +154,7 @@ export default function AdminOrders() {
       fetchOrders();
     } catch (err) {
       console.error('Failed to assign driver:', err);
+      alert(err.response?.data?.message || 'Failed to assign driver');
     }
   };
 
@@ -440,8 +456,10 @@ export default function AdminOrders() {
                 <button
                   onClick={() => {
                     setShowDriverModal(true);
+                    fetchAvailablePartners();
                   }}
                   className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl"
+                  disabled={!['Preparing', 'Baking', 'Quality Check', 'Ready'].includes(selectedOrder.status)}
                 >
                   Assign Driver
                 </button>
@@ -465,29 +483,24 @@ export default function AdminOrders() {
         <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
           <form onSubmit={handleAssignDriver} className="bg-neutral-900 border border-neutral-800 rounded-3xl p-6 max-w-md w-full space-y-4">
             <h3 className="text-lg font-bold text-white">Assign Delivery Executive</h3>
-            <input
-              type="text"
-              placeholder="Driver Name (e.g. Rahul Sharma)"
-              required
-              value={driverForm.name}
-              onChange={(e) => setDriverForm({ ...driverForm, name: e.target.value })}
-              className="w-full px-4 py-2.5 bg-neutral-950 border border-neutral-800 rounded-xl text-xs text-white"
-            />
-            <input
-              type="text"
-              placeholder="Phone (+91 98765 43210)"
-              required
-              value={driverForm.phone}
-              onChange={(e) => setDriverForm({ ...driverForm, phone: e.target.value })}
-              className="w-full px-4 py-2.5 bg-neutral-950 border border-neutral-800 rounded-xl text-xs text-white"
-            />
-            <input
-              type="text"
-              placeholder="Vehicle Number (MH 12 AB 1234)"
-              value={driverForm.vehicleNumber}
-              onChange={(e) => setDriverForm({ ...driverForm, vehicleNumber: e.target.value })}
-              className="w-full px-4 py-2.5 bg-neutral-950 border border-neutral-800 rounded-xl text-xs text-white"
-            />
+            {availablePartners.length > 0 ? (
+              <select
+                required
+                value={selectedPartnerId}
+                onChange={(e) => setSelectedPartnerId(e.target.value)}
+                className="w-full px-4 py-2.5 bg-neutral-950 border border-neutral-800 rounded-xl text-xs text-white outline-none focus:border-amber-500"
+              >
+                {availablePartners.map((p) => (
+                  <option key={p._id} value={p._id}>
+                    {p.name} - {p.vehicleNumber} ({p.vehicleType})
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 p-3 rounded-xl">
+                No delivery partners are currently available. They are either offline or assigned to other active deliveries.
+              </div>
+            )}
             <div className="flex justify-end gap-2 pt-2">
               <button type="button" onClick={() => setShowDriverModal(false)} className="px-4 py-2 text-xs text-neutral-400">
                 Cancel

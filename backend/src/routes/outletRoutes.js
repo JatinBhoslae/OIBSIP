@@ -4,6 +4,6 @@ import { getOutlets } from '../controllers/outletController.js';
 
 const router = express.Router();
 
-router.get('/', protect, adminOnly, getOutlets);
+router.get('/', protect, getOutlets);
 
 export default router;

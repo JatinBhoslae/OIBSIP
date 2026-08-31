@@ -42,7 +42,7 @@ const getDateFilter = (range) => {
 export const getDashboardOverview = async (range = '30days') => {
   const dateFilter = getDateFilter(range);
 
-  const [revenueData, statusCounts, activeCustomers, lowStockItems, topPizza] = await Promise.all([
+  const [revenueData, statusCounts, activeCustomers, lowStockItems, topPizza, walletLiabilityData] = await Promise.all([
     // Revenue & Order Aggregation
     Order.aggregate([
       { $match: { createdAt: dateFilter } },
@@ -89,9 +89,15 @@ export const getDashboardOverview = async (range = '30days') => {
       { $sort: { totalSold: -1 } },
       { $limit: 1 },
     ]),
+    
+    // Total Wallet Liability
+    User.aggregate([
+      { $group: { _id: null, totalWallet: { $sum: '$walletBalance' } } }
+    ])
   ]);
 
   const rev = revenueData[0] || {};
+  const totalWalletLiability = walletLiabilityData[0]?.totalWallet || 0;
 
   // Calculate avg delivery time (from orders with actualDeliveryTime set)
   const deliveryTimeData = await Order.aggregate([
@@ -143,6 +149,7 @@ export const getDashboardOverview = async (range = '30days') => {
     refundedOrders: (statusMap['Refunded'] || 0) + (statusMap['refunded'] || 0),
     topSellingPizza: topPizza[0] || { _id: 'N/A', totalSold: 0, totalRevenue: 0 },
     statusBreakdown: statusCounts,
+    totalWalletLiability,
   };
 };
 

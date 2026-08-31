@@ -61,7 +61,7 @@ export default function Dashboard() {
         )}
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <DashboardCard
             icon={ShoppingBag}
             title="Total Orders"
@@ -89,6 +89,13 @@ export default function Dashboard() {
             value={metrics?.lowStockCount || 0}
             accent={metrics?.lowStockCount > 0 ? 'red' : 'yellow'}
             subtitle="Items below threshold"
+          />
+          <DashboardCard
+            icon={IndianRupee}
+            title="Wallet Liability"
+            value={`₹${metrics?.totalWalletLiability || 0}`}
+            accent="purple"
+            subtitle="Total customer wallets"
           />
         </div>
 

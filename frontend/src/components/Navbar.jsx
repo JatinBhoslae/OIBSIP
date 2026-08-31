@@ -27,30 +27,31 @@ export default function Navbar() {
       </Link>
 
       <div className="flex items-center gap-6 text-sm font-medium">
-        {user?.role !== 'admin' && (
+        {(!user || user.role === 'customer') && (
           <Link to="/menu" className="hover:text-[#FF6B00] transition-colors">
             Menu
           </Link>
         )}
-        {user?.role !== 'admin' && (
+        {(!user || user.role === 'customer') && (
           <Link to="/customize" className="text-[#FF6B00] hover:text-white transition-colors bg-[#FF6B00]/10 border border-[#FF6B00]/25 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider">
             Pizza Builder
           </Link>
         )}
         {user && (
           <>
-            {user.role === 'admin' ? (
+            {user.role === 'admin' && (
               <Link to="/admin/orders" className="hover:text-[#FF6B00] transition-colors font-semibold">
                 All Orders
               </Link>
-            ) : (
+            )}
+            {user.role === 'customer' && (
               <Link to="/orders" className="hover:text-[#FF6B00] transition-colors">
                 My Orders
               </Link>
             )}
-            {user.role !== 'admin' && (
-              <Link to="/profile/loyalty" className="hover:text-[#FF6B00] text-amber-400 font-semibold transition-colors flex items-center gap-1">
-                🏆 Rewards
+            {user.role === 'customer' && (
+              <Link to="/profile" className="hover:text-[#FF6B00] text-amber-400 font-semibold transition-colors flex items-center gap-1">
+                👤 Profile
               </Link>
             )}
           </>
@@ -69,7 +70,7 @@ export default function Navbar() {
       </div>
 
       <div className="flex items-center gap-4">
-        {user?.role !== 'admin' && (
+        {(!user || user.role === 'customer') && (
           <Link to="/cart" className="relative p-2.5 hover:bg-neutral-800 rounded-full transition-colors">
             <ShoppingCart className="w-5 h-5 text-neutral-300 hover:text-white" />
             {totalCartQuantity > 0 && (

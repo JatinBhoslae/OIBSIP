@@ -1,4 +1,5 @@
 import User from '../models/User.js';
+import DeliveryPartner from '../models/DeliveryPartner.js';
 import jwt from 'jsonwebtoken';
 import sendEmail from '../utils/nodemailer.js';
 import crypto from 'crypto';
@@ -10,7 +11,7 @@ const generateToken = (id) => {
 };
 
 export const register = async (req, res, next) => {
-  const { name, email, password, ref } = req.body;
+  const { name, email, password, ref, role } = req.body;
 
   try {
     const userExists = await User.findOne({ email });
@@ -43,7 +44,24 @@ export const register = async (req, res, next) => {
       referredBy: referrer,
       verificationOTP: otp,
       otpExpires,
+      role: role && ['customer', 'delivery_partner'].includes(role) ? role : 'customer',
     });
+
+    if (user.role === 'delivery_partner') {
+      const cleanName = name.replace(/[^a-zA-Z]/g, '').toUpperCase().slice(0, 3) || 'DEL';
+      const randomSuffix = Math.floor(100 + Math.random() * 900);
+      const employeeId = `EMP-${cleanName}${randomSuffix}`;
+
+      await DeliveryPartner.create({
+        user: user._id,
+        employeeId: employeeId,
+        name: user.name,
+        email: user.email,
+        phone: req.body.phone || '0000000000', // Need some placeholder if not provided
+        vehicleNumber: `VH-${Math.floor(1000 + Math.random() * 9000)}`,
+        status: 'ACTIVE',
+      });
+    }
 
     const emailSent = await sendEmail({
       email: user.email,
@@ -244,16 +262,25 @@ export const resetPassword = async (req, res, next) => {
 };
 
 export const getProfile = async (req, res, next) => {
-  return res.status(200).json({ success: true, user: req.user });
+  try {
+    const user = await User.findById(req.user.id).select('-password');
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    return res.status(200).json({ success: true, user });
+  } catch (error) {
+    next(error);
+  }
 };
 
 export const updateProfile = async (req, res, next) => {
-  const { name } = req.body;
+  const { name, phone, addresses } = req.body;
   try {
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
     if (name) user.name = name;
+    if (phone !== undefined) user.phone = phone;
+    if (addresses !== undefined) user.addresses = addresses;
+
     await user.save();
 
     return res.status(200).json({
@@ -264,7 +291,13 @@ export const updateProfile = async (req, res, next) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        phone: user.phone,
         isVerified: user.isVerified,
+        walletBalance: user.walletBalance,
+        addresses: user.addresses,
+        loyaltyPoints: user.loyaltyPoints,
+        loyaltyTier: user.loyaltyTier,
+        referralCode: user.referralCode,
       },
     });
   } catch (error) {

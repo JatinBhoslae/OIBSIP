@@ -15,6 +15,8 @@ export default function Register() {
   const [successMessage, setSuccessMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const [role, setRole] = useState('customer');
+
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -25,7 +27,7 @@ export default function Register() {
     setErrorMessage('');
     setSuccessMessage('');
 
-    const res = await register(name, email, password);
+    const res = await register(name, email, password, role);
     setLoading(false);
 
     if (res.success) {
@@ -70,6 +72,34 @@ export default function Register() {
           <Input label="Full Name" placeholder="John Doe" value={name} onChange={(e) => setName(e.target.value)} required icon={User} />
           <Input label="Email Address" type="email" placeholder="john@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required icon={Mail} />
           <Input label="Password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required icon={Lock} />
+
+          <div className="pt-2">
+            <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">Account Type</label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setRole('customer')}
+                className={`py-2 px-4 rounded-xl text-xs font-bold border transition-all ${
+                  role === 'customer' 
+                    ? 'bg-[#FF6B00]/20 border-[#FF6B00] text-[#FF6B00]' 
+                    : 'bg-neutral-950 border-neutral-800 text-neutral-500 hover:border-neutral-700'
+                }`}
+              >
+                Customer
+              </button>
+              <button
+                type="button"
+                onClick={() => setRole('delivery_partner')}
+                className={`py-2 px-4 rounded-xl text-xs font-bold border transition-all ${
+                  role === 'delivery_partner' 
+                    ? 'bg-[#FF6B00]/20 border-[#FF6B00] text-[#FF6B00]' 
+                    : 'bg-neutral-950 border-neutral-800 text-neutral-500 hover:border-neutral-700'
+                }`}
+              >
+                Delivery Partner
+              </button>
+            </div>
+          </div>
 
           <Button type="submit" disabled={loading} className="w-full py-3">
             {loading ? 'Creating Account...' : 'Register'}

@@ -19,6 +19,7 @@ import {
   Store
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import AdminFleetMap from '../../components/admin/AdminFleetMap';
 
 export default function AdminDelivery() {
   const socket = useContext(SocketContext);
@@ -53,7 +54,7 @@ export default function AdminDelivery() {
     try {
       const [partnersRes, ordersRes, outletsRes] = await Promise.all([
         api.get('/admin/delivery-partners/partners'),
-        api.get('/orders'),
+        api.get('/orders/admin'),
         api.get('/admin/outlets')
       ]);
       
@@ -254,42 +255,13 @@ export default function AdminDelivery() {
                 </span>
               </div>
 
-              {/* Simulated Map Workspace */}
-              <div className="flex-1 bg-neutral-950 border border-neutral-850 rounded-2xl relative overflow-hidden flex flex-col justify-center items-center p-6 text-center">
-                <div className="absolute inset-0 bg-[radial-gradient(#ff6b001a_1px,transparent_1px)] [background-size:16px_16px] opacity-40" />
-                
-                {/* Active driver lists with locations */}
-                {Object.keys(activePartnerLocations).length > 0 ? (
-                  <div className="z-10 w-full max-w-md space-y-3">
-                    <p className="text-xs font-bold text-neutral-400 mb-2 uppercase tracking-wider">Active Telemetry Coordinates</p>
-                    {Object.entries(activePartnerLocations).map(([pId, loc]) => {
-                      const partnerObj = partners.find((p) => p._id === pId);
-                      return (
-                        <div key={pId} className="p-3 bg-[#111827] border border-neutral-850 rounded-xl flex items-center justify-between text-xs text-left">
-                          <div>
-                            <span className="font-bold text-[#FF6B00]">{partnerObj?.name || 'Driver'}</span>
-                            <p className="text-[10px] text-neutral-400 mt-0.5">Status: {loc.deliveryStatus}</p>
-                            {loc.etaMinutes !== null && loc.etaMinutes !== undefined && (
-                              <p className="text-[10px] text-emerald-400 mt-0.5">ETA: ~{Math.round(loc.etaMinutes)} mins</p>
-                            )}
-                          </div>
-                          <div className="text-right text-[10px] text-neutral-500 font-mono">
-                            <div>Lat: {loc.lat.toFixed(4)}</div>
-                            <div>Lng: {loc.lng.toFixed(4)}</div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="z-10 max-w-sm">
-                    <Map className="w-12 h-12 text-neutral-600 mb-3 mx-auto" />
-                    <p className="text-xs font-bold text-neutral-300">Telemetry feed ready</p>
-                    <p className="text-[10px] text-neutral-500 mt-1 leading-relaxed">
-                      Start simulating driver GPS movement from the Delivery Partner Portal to stream location updates here.
-                    </p>
-                  </div>
-                )}
+              {/* Real-time Admin Fleet Map */}
+              <div className="flex-1 w-full h-full relative">
+                <AdminFleetMap 
+                  partners={partners} 
+                  activeLocations={activePartnerLocations} 
+                  outlets={outlets} 
+                />
               </div>
             </div>
 

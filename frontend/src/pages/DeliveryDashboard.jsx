@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ChatWidget from '../components/common/ChatWidget';
+import LiveTrackingMap from '../components/common/LiveTrackingMap';
 import DeliveryChatbot from '../components/delivery/DeliveryChatbot';
 
 export default function DeliveryDashboard() {
@@ -169,8 +170,8 @@ export default function DeliveryDashboard() {
     return R * c;
   };
 
-  // Start GPS Simulation
-  const toggleGpsSimulation = () => {
+  // Start GPS Simulation — from nearest outlet to customer address at 500m/min
+  const toggleGpsSimulation = async () => {
     if (gpsSimulating) {
       clearInterval(gpsInterval);
       setGpsInterval(null);
@@ -178,22 +179,47 @@ export default function DeliveryDashboard() {
       setLocationStatus('Off');
     } else {
       setGpsSimulating(true);
-      setLocationStatus('Simulating Active GPS...');
-      
-      const storeLat = 12.9700; 
-      const storeLng = 77.5900;
-      const destLat = activeOrder?.shippingAddress?.lat || 12.9780;
-      const destLng = activeOrder?.shippingAddress?.lng || 77.6010;
+      setLocationStatus('Finding nearest outlet...');
 
-      const totalDistanceKm = calculateDistance(storeLat, storeLng, destLat, destLng);
+      // Fetch outlets to find the nearest one
+      let startLat = 19.0760, startLng = 72.8777; // Default Mumbai center
+      try {
+        const outletsRes = await api.get('/admin/outlets');
+        if (outletsRes.data.success && outletsRes.data.data.length > 0) {
+          const destLat = activeOrder?.shippingAddress?.lat || 19.0760;
+          const destLng = activeOrder?.shippingAddress?.lng || 72.8777;
+          
+          // Find nearest outlet to customer
+          let minDist = Infinity;
+          outletsRes.data.data.forEach(o => {
+            if (o.location?.lat && o.location?.lng) {
+              const d = calculateDistance(o.location.lat, o.location.lng, destLat, destLng);
+              if (d < minDist) {
+                minDist = d;
+                startLat = o.location.lat;
+                startLng = o.location.lng;
+              }
+            }
+          });
+          setLocationStatus(`Dispatching from nearest outlet (${minDist.toFixed(1)}km away)...`);
+        }
+      } catch (err) {
+        console.error('Could not fetch outlets, using default start:', err);
+      }
+
+      const destLat = activeOrder?.shippingAddress?.lat || 19.0780;
+      const destLng = activeOrder?.shippingAddress?.lng || 72.8810;
+
+      const totalDistanceKm = calculateDistance(startLat, startLng, destLat, destLng);
       const totalDistanceMeters = totalDistanceKm * 1000;
       
       // Speed: 500 meters per minute = 8.33 meters per second
       // Update interval: 5 seconds -> covers 41.65 meters per tick
       const distancePerTick = (500 / 60) * 5; 
-      const totalSteps = Math.ceil(totalDistanceMeters / distancePerTick);
+      const totalSteps = Math.max(1, Math.ceil(totalDistanceMeters / distancePerTick));
       
       let currentStep = 0;
+      setLocationStatus(`En route — ${totalDistanceKm.toFixed(1)}km to customer (500m/min)`);
 
       // Update backend location periodically
       const interval = setInterval(async () => {
@@ -208,10 +234,12 @@ export default function DeliveryDashboard() {
           setGpsSimulating(false);
           setLocationStatus('Reached Destination');
         } else {
-          // Linear interpolation mock
+          // Linear interpolation
           const t = currentStep / totalSteps;
-          lat = storeLat + (destLat - storeLat) * t;
-          lng = storeLng + (destLng - storeLng) * t;
+          lat = startLat + (destLat - startLat) * t;
+          lng = startLng + (destLng - startLng) * t;
+          const remaining = totalDistanceKm * (1 - t);
+          setLocationStatus(`En route — ${remaining.toFixed(1)}km remaining`);
         }
 
         try {
@@ -384,6 +412,16 @@ export default function DeliveryDashboard() {
                   {gpsSimulating ? 'Stop GPS' : 'Start GPS'}
                 </button>
               </div>
+
+              {/* Map View for Driver */}
+              {activeOrder.deliveryInfo?.deliveryStatus && activeOrder.deliveryInfo?.deliveryStatus !== 'UNASSIGNED' && (
+                <div className="mt-4">
+                  <LiveTrackingMap
+                    customerLocation={activeOrder.shippingAddress}
+                    driverLocation={partner?.currentLocation || {lat: 19.0760, lng: 72.8777}}
+                  />
+                </div>
+              )}
 
               {/* Status workflow engine */}
               <div className="pt-2 space-y-3">

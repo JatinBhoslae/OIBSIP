@@ -21,6 +21,7 @@ export default function MyOrders() {
   const [comment, setComment] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
   const [reviewMessage, setReviewMessage] = useState('');
+  const [walletBalance, setWalletBalance] = useState(0);
 
   useEffect(() => {
     const fetchMyOrders = async () => {
@@ -45,6 +46,16 @@ export default function MyOrders() {
     }
   }, [token, activeTab]);
 
+  useEffect(() => {
+    if (token) {
+      axios.get('http://localhost:5001/api/auth/profile', {
+        headers: { Authorization: `Bearer ${token}` }
+      }).then(res => {
+        setWalletBalance(res.data.user?.walletBalance || 0);
+      }).catch(console.error);
+    }
+  }, [token]);
+
   const handleReorder = async (orderId) => {
     try {
       const res = await axios.post(
@@ -61,6 +72,24 @@ export default function MyOrders() {
       }
     } catch (err) {
       console.error('Reorder error:', err);
+    }
+  };
+
+  const handleCancelOrder = async (orderId) => {
+    if (!window.confirm('Are you sure you want to cancel this order?')) return;
+    
+    try {
+      const res = await axios.post(
+        `http://localhost:5001/api/orders/${orderId}/cancel`,
+        { reason: 'Customer changed their mind' },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (res.data.success) {
+        setOrders(orders.map(o => o._id === orderId ? { ...o, status: 'Cancelled' } : o));
+      }
+    } catch (err) {
+      console.error('Cancel order error:', err);
+      alert(err.response?.data?.message || 'Failed to cancel order.');
     }
   };
 
@@ -114,7 +143,14 @@ export default function MyOrders() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-extrabold tracking-tight text-white">My Orders</h1>
+            <h1 className="text-3xl font-extrabold tracking-tight text-white flex items-center gap-3">
+              My Orders
+              {walletBalance > 0 && (
+                <span className="text-xs font-bold bg-[#FF6B00]/10 text-[#FF6B00] border border-[#FF6B00]/20 px-3 py-1 rounded-full">
+                  Pizza Wallet: ₹{walletBalance}
+                </span>
+              )}
+            </h1>
             <p className="text-sm text-neutral-400 mt-1">
               Track active deliveries, download invoices, and reorder your favorite pizzas.
             </p>
@@ -214,12 +250,16 @@ export default function MyOrders() {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <Link
-                      to={`/orders/${order.trackingCode || order._id}`}
-                      className="px-4 py-2 bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 border border-orange-500/20 text-xs font-bold rounded-xl transition-all"
-                    >
-                      Track Order Live
-                    </Link>
+                    {!['Cancelled', 'Refunded', 'cancelled', 'refunded'].includes(order.status) ? (
+                      <Link
+                        to={`/orders/${order.trackingCode || order._id}`}
+                        className="px-4 py-2 bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 border border-orange-500/20 text-xs font-bold rounded-xl transition-all"
+                      >
+                        {order.status === 'Delivered' ? 'View Order Receipt' : 'Track Order Live'}
+                      </Link>
+                    ) : (
+                      <span className="text-xs text-neutral-500 font-bold px-2 py-1">Order Cancelled</span>
+                    )}
 
                     {['delivered', 'Delivered'].includes(order.status) && (
                       <button
@@ -233,6 +273,15 @@ export default function MyOrders() {
                         className="px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 text-xs font-bold rounded-xl transition-all"
                       >
                         Leave Review
+                      </button>
+                    )}
+
+                    {['Order Received', 'Pending Payment', 'pending', 'confirmed', 'Preparing', 'Baking', 'Quality Check', 'Ready'].includes(order.status) && (
+                      <button
+                        onClick={() => handleCancelOrder(order._id)}
+                        className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-xs font-bold rounded-xl transition-all"
+                      >
+                        Cancel Order
                       </button>
                     )}
 

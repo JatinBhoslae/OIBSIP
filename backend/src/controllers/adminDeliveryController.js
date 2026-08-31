@@ -74,7 +74,7 @@ export const getDeliveryPartners = async (req, res, next) => {
       partners.map(async (p) => {
         const monthly = await getMonthlyTotal(p._id);
         const obj = p.toObject();
-        obj.analytics = { monthlyIncome: monthly.total };
+        obj.analytics = { monthlyIncome: typeof monthly === 'number' ? monthly : (monthly?.total || 0) };
         return obj;
       })
     );

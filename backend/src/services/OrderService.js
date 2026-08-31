@@ -1,4 +1,5 @@
 import Order from '../models/Order.js';
+import User from '../models/User.js';
 import Pizza from '../models/Pizza.js';
 import Ingredient from '../models/Ingredient.js';
 import Coupon from '../models/Coupon.js';
@@ -12,7 +13,7 @@ import { etaMinutes } from '../utils/geo.js';
  * Creates a new order with auto-generated orderNumber, trackingCode, invoiceNumber, and initial audit trail.
  */
 export const createOrderService = async (orderData, userId) => {
-  const { items, shippingAddress, phone, couponCode, paymentMethod } = orderData;
+  const { items, shippingAddress, phone, couponCode, paymentMethod, useWallet } = orderData;
 
   if (!items || items.length === 0) {
     const error = new Error('Cart items are required');
@@ -145,7 +146,24 @@ export const createOrderService = async (orderData, userId) => {
 
   const gst = Math.round((subTotal - discountAmount) * 0.05);
   const deliveryCharges = subTotal - discountAmount > 500 ? 0 : 40;
-  const grandTotal = subTotal - discountAmount + gst + deliveryCharges;
+  let grandTotal = subTotal - discountAmount + gst + deliveryCharges;
+  
+  let walletDeduction = 0;
+  if (useWallet) {
+    const user = await User.findById(userId);
+    if (user && user.walletBalance > 0) {
+      if (user.walletBalance >= grandTotal) {
+        walletDeduction = grandTotal;
+        user.walletBalance -= grandTotal;
+        grandTotal = 0;
+      } else {
+        walletDeduction = user.walletBalance;
+        grandTotal -= user.walletBalance;
+        user.walletBalance = 0;
+      }
+      await user.save();
+    }
+  }
 
   // Auto-generate identifiers
   const orderNumber = await generateOrderNumber();
@@ -178,8 +196,10 @@ export const createOrderService = async (orderData, userId) => {
     gst,
     deliveryCharges,
     grandTotal,
+    walletDeduction,
     couponCode,
-    paymentMethod: paymentMethod || 'Razorpay',
+    paymentMethod: grandTotal === 0 && walletDeduction > 0 ? 'Wallet' : (paymentMethod || 'Razorpay'),
+    paymentStatus: grandTotal === 0 ? 'paid' : 'pending',
     status: 'Order Received',
     statusHistory: initialStatusHistory,
     shippingAddress,

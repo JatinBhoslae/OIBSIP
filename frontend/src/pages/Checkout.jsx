@@ -22,8 +22,48 @@ export default function Checkout() {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
+  const [walletBalance, setWalletBalance] = useState(0);
+  const [useWallet, setUseWallet] = useState(false);
+  const [savedAddresses, setSavedAddresses] = useState([]);
+  const [selectedSavedIdx, setSelectedSavedIdx] = useState(null);
+
   const navigate = useNavigate();
   const totals = getCartTotals();
+  const finalTotal = useWallet ? Math.max(0, totals.grandTotal - walletBalance) : totals.grandTotal;
+
+  React.useEffect(() => {
+    if (token) {
+      api.get('/auth/profile').then(res => {
+        setWalletBalance(res.data.user?.walletBalance || 0);
+        const addrs = res.data.user?.addresses || [];
+        setSavedAddresses(addrs);
+        if (addrs.length > 0) {
+          setSelectedSavedIdx(0);
+          setStreet(addrs[0].street);
+          setCity(addrs[0].city);
+          setZipCode(addrs[0].zipCode);
+        }
+        if (res.data.user?.phone) {
+          setPhone(res.data.user.phone);
+        }
+      }).catch(console.error);
+    }
+  }, [token]);
+
+  const handleSelectSavedAddress = (idx) => {
+    if (idx === null) {
+      setSelectedSavedIdx(null);
+      setStreet('');
+      setCity('');
+      setZipCode('');
+      return;
+    }
+    const a = savedAddresses[idx];
+    setSelectedSavedIdx(idx);
+    setStreet(a.street);
+    setCity(a.city);
+    setZipCode(a.zipCode);
+  };
 
   const handlePlaceOrder = async () => {
     if (!token) {
@@ -53,10 +93,17 @@ export default function Checkout() {
           shippingAddress: { street, city, zipCode },
           phone,
           couponCode,
+          useWallet,
         }
       );
 
       const { order, razorpayOrderId, key } = res.data;
+
+      if (finalTotal === 0) {
+        clearCart();
+        navigate(`/orders/${order._id}`);
+        return;
+      }
 
       // Always launch real Razorpay popup checkout flow using configured VITE_RAZORPAY_KEY or key returned from API
       const options = {
@@ -188,6 +235,40 @@ export default function Checkout() {
                   Delivery Address
                 </h3>
 
+                {/* Saved Addresses */}
+                {savedAddresses.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs text-neutral-400 font-semibold">Saved Addresses</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {savedAddresses.map((addr, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => handleSelectSavedAddress(idx)}
+                          className={`text-left p-3 rounded-xl border text-xs transition-all ${
+                            selectedSavedIdx === idx
+                              ? 'bg-[#FF6B00]/10 border-[#FF6B00]/40 text-white'
+                              : 'bg-neutral-950 border-neutral-800 text-neutral-400 hover:border-neutral-700'
+                          }`}
+                        >
+                          <span className="font-bold text-[10px] uppercase tracking-wider text-[#FF6B00]">{addr.label}</span>
+                          <p className="mt-1">{addr.street}, {addr.city} - {addr.zipCode}</p>
+                        </button>
+                      ))}
+                      <button
+                        onClick={() => handleSelectSavedAddress(null)}
+                        className={`text-left p-3 rounded-xl border text-xs transition-all ${
+                          selectedSavedIdx === null
+                            ? 'bg-[#FF6B00]/10 border-[#FF6B00]/40 text-white'
+                            : 'bg-neutral-950 border-neutral-800 text-neutral-400 hover:border-neutral-700'
+                        }`}
+                      >
+                        <span className="font-bold text-[10px] uppercase tracking-wider text-[#FF6B00]">+ New</span>
+                        <p className="mt-1">Enter a new address</p>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <Input
                   label="Street Address"
                   placeholder="123 Pizza Lane, Apt 4B"
@@ -298,7 +379,7 @@ export default function Checkout() {
                   </Button>
                   <Button onClick={handlePlaceOrder} disabled={loading || !navigator.onLine} className="py-3 flex-1">
                     <CreditCard className="w-4 h-4" />
-                    {loading ? 'Processing...' : !navigator.onLine ? 'Offline' : `Pay ₹${totals.grandTotal}`}
+                    {loading ? 'Processing...' : !navigator.onLine ? 'Offline' : `Pay ₹${finalTotal}`}
                   </Button>
                 </div>
               </div>
@@ -331,9 +412,29 @@ export default function Checkout() {
                 <span>{totals.deliveryCharges === 0 ? <span className="text-[#22C55E] font-bold">FREE</span> : `₹${totals.deliveryCharges}`}</span>
               </div>
 
+              {walletBalance > 0 && (
+                <div className="border-t border-neutral-850 pt-3 flex flex-col gap-2">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      checked={useWallet} 
+                      onChange={(e) => setUseWallet(e.target.checked)}
+                      className="accent-[#FF6B00]"
+                    />
+                    <span className="text-white font-semibold">Use Pizza Wallet (₹{walletBalance})</span>
+                  </label>
+                  {useWallet && (
+                    <div className="flex justify-between text-[#FF6B00] font-bold">
+                      <span>Wallet Applied</span>
+                      <span>-₹{Math.min(walletBalance, totals.grandTotal)}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="border-t border-neutral-850 pt-3 flex justify-between items-center text-sm font-extrabold text-white">
                 <span>Grand Total</span>
-                <span className="text-lg text-[#FF6B00]">₹{totals.grandTotal}</span>
+                <span className="text-lg text-[#FF6B00]">₹{finalTotal}</span>
               </div>
             </div>
           </div>

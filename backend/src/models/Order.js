@@ -115,6 +115,10 @@ const orderSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    walletDeduction: {
+      type: Number,
+      default: 0,
+    },
     couponCode: {
       type: String,
     },
@@ -150,13 +154,13 @@ const orderSchema = new mongoose.Schema(
     statusHistory: [statusHistorySchema],
     paymentStatus: {
       type: String,
-      enum: ['pending', 'paid', 'failed'],
+      enum: ['pending', 'paid', 'failed', 'refunded'],
       default: 'pending',
       index: true,
     },
     paymentMethod: {
       type: String,
-      enum: ['Razorpay', 'COD', 'Card', 'UPI'],
+      enum: ['Razorpay', 'COD', 'Card', 'UPI', 'Wallet'],
       default: 'Razorpay',
     },
     paymentId: {

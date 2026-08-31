@@ -38,6 +38,7 @@ import deliveryRatingRoutes from './routes/deliveryRatingRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
 import aiChatRoutes from './routes/aiChatRoutes.js';
 import outletRoutes from './routes/outletRoutes.js';
+import walletRoutes from './routes/walletRoutes.js';
 
 // Connect Database
 connectDB();
@@ -112,7 +113,7 @@ app.use('/api/', globalLimiter);
 // Stricter limiter for auth endpoints
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
+  max: 100, // increased to 100 for testing
   message: { success: false, message: 'Too many authentication attempts, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,

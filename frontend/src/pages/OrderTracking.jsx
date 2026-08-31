@@ -92,12 +92,11 @@ export default function OrderTracking() {
   const handleSubmitRating = async () => {
     try {
       await axios.post(
-        'http://localhost:5001/api/delivery/ratings',
+        'http://localhost:5001/api/delivery-ratings',
         {
           orderId: order._id,
-          partnerId: order.deliveryPartner.partnerId,
           rating: ratingScore,
-          feedback: ratingFeedback,
+          comment: ratingFeedback,
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
